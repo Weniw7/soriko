@@ -35,3 +35,5 @@ Preview target: `https://sorico.alfonsogiozmillan.workers.dev`
 ## Status
 
 Foundation initialized 2026-09-29.
+
+Deployment retry: Cloudflare write access enabled.
