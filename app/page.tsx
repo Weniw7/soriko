@@ -196,6 +196,42 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="storePreview pageWidth">
+        <div className="sectionHeading">
+          <div>
+            <p className="kicker">SORIKO STORE</p>
+            <h2>Producto que apetece coleccionar.</h2>
+          </div>
+          <p>
+            Japón, inglés y español; novedades para abrir, sellado para conservar
+            y accesorios pensados para cuidar y exponer la colección.
+          </p>
+        </div>
+
+        <div className="storePreviewGrid">
+          <Link className="storePreviewCard previewJapan" href="/shop/#japan">
+            <span>JAPAN SELECT</span>
+            <strong>Booster Boxes</strong>
+            <small>Producto japonés · sourcing Soriko</small>
+          </Link>
+          <Link className="storePreviewCard previewVault" href="/shop/#sealed">
+            <span>THE VAULT</span>
+            <strong>Sealed Collection</strong>
+            <small>Para guardar, exponer y conservar</small>
+          </Link>
+          <Link className="storePreviewCard previewOpen" href="/shop/#open">
+            <span>OPEN IT</span>
+            <strong>Sets & Drops</strong>
+            <small>Novedades, preventas y restocks</small>
+          </Link>
+          <Link className="storePreviewCard previewLab" href="/lab/">
+            <span>SORIKO LAB</span>
+            <strong>Collector Gear</strong>
+            <small>Displays, soportes y accesorios propios</small>
+          </Link>
+        </div>
+      </section>
+
       <section className="historySection pageWidth">
         <div className="historyIntro">
           <p className="kicker">THE ARCHIVE</p>
