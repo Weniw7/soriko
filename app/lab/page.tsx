@@ -16,7 +16,7 @@ export default function LabPage() {
           <span>SORIKO<small>CLUB</small></span>
         </Link>
         <nav className="mainNav">
-          <Link href="/shop/">Tienda</Link>
+          <Link href="/shop/">Tienda Pokémon</Link>
           <Link href="/shop/#japan">Japón</Link>
           <Link href="/journal/">Journal</Link>
           <Link href="/club/">Club</Link>
@@ -26,7 +26,7 @@ export default function LabPage() {
 
       <section className="innerHero pageWidth">
         <p className="kicker">SORIKO LAB</p>
-        <h1>Tu colección también<br />merece escenario.</h1>
+        <h1>Tus cartas Pokémon<br />merecen escenario.</h1>
         <p>
           Una línea propia de accesorios para proteger, ordenar y exponer cartas
           y producto sellado. Diseñada desde Soriko, fabricada en series pequeñas
@@ -48,7 +48,7 @@ export default function LabPage() {
       <section className="labStatement">
         <div className="pageWidth">
           <p className="kicker">DESIGNED FOR COLLECTORS</p>
-          <h2>Menos merchandising.<br />Más utilidad.</h2>
+          <h2>Menos ruido.<br />Más colección.</h2>
           <p>
             Soriko Lab se centrará en accesorios genéricos de coleccionismo con
             diseño propio, evitando depender de reproducciones no licenciadas de
