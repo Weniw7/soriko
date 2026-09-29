@@ -16,7 +16,7 @@ export default function ClubPage() {
           <span>SORIKO<small>CLUB</small></span>
         </Link>
         <nav className="mainNav">
-          <Link href="/shop/">Tienda</Link>
+          <Link href="/shop/">Tienda Pokémon</Link>
           <Link href="/shop/#japan">Japón</Link>
           <Link href="/journal/">Journal</Link>
           <Link href="/club/">Club</Link>
@@ -25,8 +25,8 @@ export default function ClubPage() {
       </header>
 
       <section className="innerHero pageWidth">
-        <p className="kicker">NOT JUST CUSTOMERS</p>
-        <h1>Bienvenido<br />al Club.</h1>
+        <p className="kicker">POKÉMON COLLECTORS · COMMUNITY</p>
+        <h1>Tu colección.<br />Tu Club.</h1>
         <p>
           Soriko quiere que comprar sea solo una parte de la relación. El verdadero activo será una comunidad que vuelve porque aprende,
           descubre producto, encuentra oportunidades y comparte colección.
@@ -47,7 +47,7 @@ export default function ClubPage() {
         <div className="pageWidth clubGrid">
           <div>
             <p className="kicker">SORIKO CHRONICLE</p>
-            <h2>Una newsletter que no parece publicidad.</h2>
+            <h2>Pokémon que merece llegar a tu bandeja.</h2>
             <p className="clubLead">
               Un número semanal o quincenal: qué acaba de salir, qué ocurre en Japón, una historia del archivo,
               una pieza de la semana y las alertas que de verdad importan.
