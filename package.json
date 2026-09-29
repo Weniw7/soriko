@@ -1,31 +1,25 @@
 {
   "name": "soriko-club",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "dev:vinext": "vinext dev",
-    "build:vinext": "vinext build",
-    "start:vinext": "vinext start",
-    "check:cloudflare": "vinext check"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:dry": "npm run build && wrangler deploy --dry-run"
   },
   "dependencies": {
-    "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.117.2",
     "next": "16.3.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "vinext": "1.0.0-beta.13"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@types/node": "24.5.2",
-    "@types/react": "19.1.16",
-    "@types/react-dom": "19.1.9",
+    "@types/node": "26.6.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "typescript": "7.0.2",
-    "vite": "8.3.1",
     "wrangler": "4.142.0"
   }
 }
