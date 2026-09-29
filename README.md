@@ -28,6 +28,10 @@ Independent Pokémon ecommerce and sourcing platform operated by AMM CORE SOLUTI
 - Database: dedicated Supabase project
 - Secrets: Cloudflare/Supabase environment variables only. Never commit secrets.
 
+## Deployment
+
+Preview target: `https://sorico.alfonsogiozmillan.workers.dev`
+
 ## Status
 
 Foundation initialized 2026-09-29.
