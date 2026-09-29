@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      collector_profiles: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          display_name: string | null
+          favorite_era: string | null
+          favorite_product_language:
+            | Database["public"]["Enums"]["product_language"]
+            | null
+          preferred_language: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          display_name?: string | null
+          favorite_era?: string | null
+          favorite_product_language?:
+            | Database["public"]["Enums"]["product_language"]
+            | null
+          preferred_language?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          display_name?: string | null
+          favorite_era?: string | null
+          favorite_product_language?:
+            | Database["public"]["Enums"]["product_language"]
+            | null
+          preferred_language?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       inventory_lots: {
         Row: {
           created_at: string
@@ -233,6 +272,42 @@ export type Database = {
           name?: string
           region?: string | null
           source_type?: string
+        }
+        Relationships: []
+      }
+      newsletter_subscribers: {
+        Row: {
+          confirmed_at: string | null
+          consent_at: string | null
+          consent_version: string | null
+          created_at: string
+          email: string
+          id: string
+          locale: string
+          source: string
+          status: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          consent_at?: string | null
+          consent_version?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          locale?: string
+          source?: string
+          status?: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          consent_at?: string | null
+          consent_version?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          locale?: string
+          source?: string
+          status?: string
         }
         Relationships: []
       }
@@ -825,6 +900,47 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: []
+      }
+      wishlist_items: {
+        Row: {
+          created_at: string
+          id: string
+          notify_price: boolean
+          notify_stock: boolean
+          priority: number
+          product_id: string
+          target_price_eur: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_price?: boolean
+          notify_stock?: boolean
+          priority?: number
+          product_id: string
+          target_price_eur?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_price?: boolean
+          notify_stock?: boolean
+          priority?: number
+          product_id?: string
+          target_price_eur?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
