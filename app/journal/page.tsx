@@ -9,7 +9,7 @@ export default function JournalPage() {
           <span>SORIKO<small>CLUB</small></span>
         </Link>
         <nav className="mainNav">
-          <Link href="/shop/">Tienda</Link>
+          <Link href="/shop/">Tienda Pokémon</Link>
           <Link href="/shop/#japan">Japón</Link>
           <Link href="/journal/">Journal</Link>
           <Link href="/club/">Club</Link>
@@ -19,7 +19,7 @@ export default function JournalPage() {
 
       <section className="innerHero pageWidth">
         <p className="kicker">SORIKO JOURNAL</p>
-        <h1>Las cartas también<br />cuentan historias.</h1>
+        <h1>Treinta años de Pokémon.<br />Miles de historias.</h1>
         <p>
           El archivo editorial de Soriko: historia del TCG, cultura japonesa, guías de coleccionismo,
           conservación, lanzamientos y contexto para entender por qué una colección importa.
@@ -29,14 +29,14 @@ export default function JournalPage() {
       <section className="pageWidth editorialGrid">
         <article className="editorialCard">
           <span>ISSUE 001 · HISTORY</span>
-          <h2>1996: el comienzo de una obsesión de 30 años.</h2>
+          <h2>1996: donde empezó el JCC Pokémon.</h2>
           <p>
             Del lanzamiento japonés a una comunidad global. El primer gran relato de Soriko Chronicle empieza donde empezó el hobby.
           </p>
         </article>
         <article className="editorialCard alt">
           <span>COLLECTING · JAPAN</span>
-          <h2>Por qué Japón se siente diferente.</h2>
+          <h2>Por qué coleccionar Pokémon japonés se siente diferente.</h2>
           <p>
             Diseño, idiomas, cajas, exclusivas y el ritual alrededor del producto japonés.
           </p>
@@ -46,7 +46,7 @@ export default function JournalPage() {
       <section className="historySection pageWidth">
         <div className="historyIntro">
           <p className="kicker">THE ARCHIVE</p>
-          <h2>Una línea temporal viva.</h2>
+          <h2>La historia de Pokémon TCG, colección a colección.</h2>
           <p>
             El Journal crecerá hasta convertirse en una guía visual por eras, sets, rarezas y momentos clave.
             Una manera de descubrir producto antiguo sin convertir la web en una enciclopedia fría.
