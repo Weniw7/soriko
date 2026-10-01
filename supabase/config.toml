@@ -1,0 +1,7 @@
+project_id = "soriko-club"
+
+[functions.soriko-engine]
+# Custom auth is mandatory: server-verified Supabase JWT + active session + staff role,
+# or a high-entropy Vault-held worker token for the work action only.
+verify_jwt = false
+entrypoint = "./functions/soriko-engine/index.ts"

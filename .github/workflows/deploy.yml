@@ -1,39 +1,38 @@
 name: Deploy Soriko to Cloudflare
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
+concurrency:
+  group: soriko-production
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
-
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - run: npm ci
+      - run: node --experimental-strip-types --test tests/engine.test.mjs
       - run: npm run build
-
-      - name: Verify Cloudflare credentials
+      - name: Deploy tested static assets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing CLOUDFLARE_API_TOKEN" && exit 1)
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing CLOUDFLARE_ACCOUNT_ID" && exit 1)
-
-      - name: Verify Cloudflare account access
-        run: npx wrangler whoami
-
-      - name: Deploy sorico Worker
-        run: npx wrangler deploy
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing Cloudflare token" && exit 1)
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing Cloudflare account" && exit 1)
+          npx wrangler deploy
+      - name: Verify published routes
+        run: |
+          for path in / /admin/ /admin/radar/ /admin/analyze/ /admin/jobs/; do
+            curl --fail --silent --show-error --retry 3 --retry-delay 5 "https://sorico.alfonso-millan.workers.dev${path}" > /dev/null
+          done
