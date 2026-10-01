@@ -1,0 +1,39 @@
+name: Validate pinned engine toolchain
+on:
+  push:
+    branches: [soriko/engine-toolchain-refresh]
+permissions:
+  contents: write
+jobs:
+  refresh:
+    if: github.event.head_commit.message == 'Validate and refresh pinned Wrangler toolchain'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - name: Refresh only pinned Wrangler and its dependency lock
+        run: npm install --save-dev --save-exact wrangler@4.145.0 --package-lock-only --ignore-scripts
+      - run: npm ci
+      - run: npm audit --audit-level=moderate
+      - run: node --experimental-strip-types --test tests/engine.test.mjs
+      - run: npx tsc --project tsconfig.edge.json
+      - run: npm run build
+      - run: npx wrangler deploy --dry-run
+      - name: Commit verified dependency files to this maintenance branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --cached --stat
+          git commit -m "Pin patched Wrangler 4.145.0 with verified dependency lock"
+          header="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$header"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" push origin HEAD:refs/heads/soriko/engine-toolchain-refresh

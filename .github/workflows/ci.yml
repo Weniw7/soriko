@@ -22,12 +22,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Dependency audit diagnostics
-        continue-on-error: true
-        run: npm audit --json
+      - name: Dependency audit
+        run: npm audit --audit-level=moderate
       - name: Deterministic engine tests
         run: node --experimental-strip-types --test tests/engine.test.mjs
       - name: Check Edge Function types
-        run: npx tsc --noEmit --target ES2022 --module esnext --moduleResolution bundler --allowImportingTsExtensions --strict --skipLibCheck --lib ES2022,DOM tests/deno-shim.d.ts supabase/functions/soriko-engine/index.ts
+        run: npx tsc --project tsconfig.edge.json
       - run: npm run build
       - run: npx wrangler deploy --dry-run
