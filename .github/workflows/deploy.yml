@@ -13,16 +13,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: node --experimental-strip-types --test tests/engine.test.mjs
       - run: npm run build
+      - name: Stamp the exact published commit
+        run: node scripts/build-marker.mjs
       - name: Deploy tested static assets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -31,8 +33,5 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing Cloudflare token" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing Cloudflare account" && exit 1)
           npx wrangler deploy
-      - name: Verify published routes
-        run: |
-          for path in / /admin/ /admin/radar/ /admin/analyze/ /admin/jobs/; do
-            curl --fail --silent --show-error --retry 3 --retry-delay 5 "https://sorico.alfonso-millan.workers.dev${path}" > /dev/null
-          done
+      - name: Verify published commit and routes
+        run: node scripts/verify-deployment.mjs
