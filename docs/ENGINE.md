@@ -15,7 +15,7 @@ La tienda pública conserva sus páginas y diseño. El HTML del panel es un shel
 
 ## Primer acceso del propietario
 
-El acceso inicial se gestiona ahora por invitación. Desde la pantalla de login, un correo previamente autorizado puede pulsar **Primera vez: enviarme acceso**. El endpoint responde de forma genérica para no revelar qué correos están en la allowlist. La invitación se crea exclusivamente desde el backend con credenciales privilegiadas y redirige a `/admin/`.
+El acceso inicial se gestiona ahora por invitación. Desde la pantalla de login, un correo previamente autorizado puede pulsar **Primera vez: enviarme acceso**. El endpoint responde de forma genérica para no revelar qué correos están en la allowlist. La invitación se crea exclusivamente desde el backend con credenciales privilegiadas y redirige a `/admin/`. Tras aceptar la invitación, la sección **Activación** permite establecer o cambiar una contraseña de al menos 12 caracteres mediante la sesión autenticada de Supabase; la contraseña nunca pasa por el backend de Soriko ni debe compartirse en el chat.
 
 La primera invitación del propietario ya fue emitida el 2 de octubre de 2026 y existe un usuario pendiente/creado en Supabase Auth. El propietario debe aceptar personalmente el correo de Supabase y completar su credencial; ninguna contraseña se genera, almacena ni solicita por ChatGPT. Después podrá entrar con su cuenta. No hay registro público de empleados.
 
