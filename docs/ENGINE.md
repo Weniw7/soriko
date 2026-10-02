@@ -9,15 +9,15 @@ Implementación: 1 de octubre de 2026. Panel privado de datos de mercado y apoyo
 - Supabase: soriko-club / vgxeebazmzkncbsmcrha.
 - Backend: Edge Function `soriko-engine`.
 - Motor numérico: `lib/engine/core.ts`.
-- Rutas: `/admin/`, `/admin/radar/`, `/admin/analyze/`, `/admin/products/`, `/admin/opportunities/`, `/admin/suppliers/`, `/admin/jobs/`, `/admin/alerts/`.
+- Rutas: `/admin/`, `/admin/setup/`, `/admin/radar/`, `/admin/analyze/`, `/admin/products/`, `/admin/market/`, `/admin/opportunities/`, `/admin/suppliers/`, `/admin/jobs/`, `/admin/alerts/`.
 
 La tienda pública conserva sus páginas y diseño. El HTML del panel es un shell estático sin datos de negocio. Los datos privados se obtienen de la función únicamente después de validar JWT, sesión activa y rol del equipo. Ocultar un enlace no es una medida de autorización.
 
 ## Primer acceso del propietario
 
-Al comenzar no existían usuarios en Supabase Auth. La lista privada ya autoriza el correo del propietario conocido en el proyecto, pero eso NO crea su contraseña ni su usuario de Auth.
+El acceso inicial se gestiona ahora por invitación. Desde la pantalla de login, un correo previamente autorizado puede pulsar **Primera vez: enviarme acceso**. El endpoint responde de forma genérica para no revelar qué correos están en la allowlist. La invitación se crea exclusivamente desde el backend con credenciales privilegiadas y redirige a `/admin/`.
 
-En Supabase Dashboard > proyecto soriko-club > Authentication > Users > Add user, crea el usuario con tu correo autorizado y una contraseña única guardada en tu gestor. Confirma únicamente un correo bajo tu control. Después entra en `/admin/` con email y contraseña. El backend asigna el rol de la lista privada solo cuando Auth confirma el correo. No hay registro público de empleados.
+La primera invitación del propietario ya fue emitida el 2 de octubre de 2026 y existe un usuario pendiente/creado en Supabase Auth. El propietario debe aceptar personalmente el correo de Supabase y completar su credencial; ninguna contraseña se genera, almacena ni solicita por ChatGPT. Después podrá entrar con su cuenta. No hay registro público de empleados.
 
 Para autorizar otra persona, un operador debe añadir su email confirmado a `engine_private.team_allowlist` con rol `viewer`, `buyer` o `admin`. No se ha creado una cuenta compartida ni se ha autorizado automáticamente a Santi. No se admiten roles procedentes de `user_metadata`.
 
@@ -32,6 +32,7 @@ Roles: viewer consulta y simula; buyer también guarda análisis, importa oferta
 | BCE | ecb_fx | 24 h | Tipos de cambio de referencia |
 | eBay Browse España | ebay_browse | Desactivado | Requiere credenciales y autorización de producción |
 | Ofertas de proveedores | supplier_import | Manual | Importación JSON de presupuestos/exportaciones autorizadas |
+| Evidencia de mercado verificada | market_import | Manual | Listings/ventas cerradas auditables mientras se amplían APIs |
 
 URLs oficiales usadas:
 - https://downloads.s3.cardmarket.com/productCatalog/productList/products_nonsingles_6.json
@@ -87,9 +88,17 @@ Las simulaciones manuales quedan en REVIEW o PASS; nunca se presentan como una o
 
 ## Cómo aportar precios de compra
 
-En Proveedores se admiten hasta 100 filas JSON con `product_id`, `supplier_id`, `unit_price` numérico positivo, `currency` EUR/JPY/USD/GBP y `tax_basis` NET/GROSS/UNKNOWN. Opcionales: `stock_qty`, `min_qty`, `valid_until` ISO y `source_url` HTTPS. No incluyas contraseñas, tokens o datos de compradores.
+En Proveedores se admiten hasta 100 filas JSON. Se puede identificar el producto por `product_id`, `sku` o `product_name` exacto y el proveedor por `supplier_id` o `supplier_name` exacto. Son obligatorios `unit_price` positivo, `currency` EUR/JPY/USD/GBP y `tax_basis` NET/GROSS/UNKNOWN. Opcionales: `stock_qty`, `min_qty`, `valid_until` ISO y `source_url` HTTPS. No incluyas contraseñas, tokens o datos de compradores.
+
+Las ofertas importadas aparecen en el panel y pueden abrirse directamente en **Analizar oferta**. La Edge Function convierte el precio de referencia a EUR con el último tipo BCE disponible, pero el usuario debe confirmar los costes reales de cambio, logística e importación antes de considerar el landed completo.
 
 No hay APIs inventadas de JPFans, Neokyo o HeroTCG. La presencia en el directorio no acredita stock ni conexión automática. El importador conserva ofertas para calcular escenarios, pero todavía no produce arbitrajes aprobados automáticamente.
+
+## Evidencia manual de mercado
+
+La ruta `/admin/market/` permite incorporar hasta 100 observaciones verificables mientras las APIs automáticas se amplían. Admite `ASKING` y `SOLD`; una venta cerrada exige `sold_at` y todas las observaciones requieren precio y transporte conocido. La conversión a EUR se hace en backend. Una fila solo entra como identidad verificada si el producto canónico ya fue revisado y el operador marca explícitamente que la evidencia corresponde exactamente a la misma caja, idioma y variante. El resto queda en cuarentena y no debe impulsar el fair value.
+
+Cada importación encola una recomputación de métricas. Esto permite empezar a construir liquidez e histórico con fuentes auditables sin fingir que una guía agregada equivale a ventas cerradas.
 
 Para eBay: añade `EBAY_CLIENT_ID` y `EBAY_CLIENT_SECRET` en Supabase > Edge Functions > Secrets; obtén el acceso de producción correspondiente, registra `market_sources.config.production_access_approved=true` y activa la fuente desde el panel. El adaptador inicial procesa hasta diez identidades verificadas en eBay España y solo obtiene anuncios, no ventas cerradas. Hace falta ampliar lotes y cobertura antes de aplicarlo al universo completo.
 
@@ -112,6 +121,8 @@ La ingesta inicial obtuvo 100 productos, 100 snapshots, 90 referencias de precio
 
 Pruebas: 16 tests numéricos; verificación de tipos Edge; compilación Next; aislamiento RLS entre cliente y administrador; rechazo 401 sin sesión; guardado idempotente y separación de coste económico/caja en transacciones revertidas. La auditoría de seguridad de Supabase terminó sin avisos tras el endurecimiento.
 
-Pendiente: primer acceso real del propietario; prueba visual completa en navegador autenticado; fuentes japonesas/B2B autorizadas; ofertas ejecutables con coste validado; volumen de ventas fiable; matching multivariante completo; recomendaciones automáticas de compra/cantidad; backtesting calibrado; singles; sincronización Shopify; alertas externas; cobertura amplia por SKU.
+Pendiente externo/operativo: el propietario debe aceptar la invitación ya emitida y completar su acceso; prueba visual final con sesión autenticada; credenciales y aprobación de producción de eBay; primeras ofertas reales de HeroTCG/Japón; volumen de ventas cerradas suficiente; fuentes japonesas/B2B autorizadas; matching multivariante completo; recomendaciones automáticas de cantidad con backtesting calibrado; singles; sincronización Shopify; alertas externas; cobertura amplia por SKU.
+
+La pantalla `/admin/setup/` muestra estas dependencias como checklist vivo. El repositorio GitHub sigue público hasta que el propietario cambie su visibilidad desde los ajustes del repositorio o se habilite una acción administrativa equivalente.
 
 Las migraciones aplicadas están en el historial remoto de Supabase: engine_auth_foundation, soriko_engine_v1_schema, soriko_engine_rpc_and_views, soriko_engine_schedules_and_retention y soriko_engine_explicit_private_deny. La reproducción de una BBDD desde cero necesita exportar el esquema completo y la base previa con CLI autorizado; no se ha creado ni probado un entorno staging completo. Nunca exportes valores de Vault a GitHub.
