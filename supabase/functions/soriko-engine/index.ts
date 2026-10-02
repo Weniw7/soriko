@@ -186,14 +186,18 @@ async function staff(req:Request) {
  let session:string|undefined;
  try{const p=bearer.slice(7).split('.')[1];session=JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))).session_id;}catch{}
  assert(uuid(session)&&await rpc('engine_session_active',{p_user:user.id,p_session:session}),'SESSION_REVOKED');
- const gate=await db(`engine_superadmin?singleton=eq.true&user_id=eq.${user.id}&select=user_id`);
- assert(gate.length===1,'FORBIDDEN');
- let profiles=await db(`profiles?user_id=eq.${user.id}&select=user_id,role`);
- if(!profiles.length)profiles=await db('profiles?on_conflict=user_id','POST',{user_id:user.id,role:'admin',display_name:'Superadmin'},'resolution=merge-duplicates,return=representation');
- else if(profiles[0].role!=='admin')profiles=await db(`profiles?user_id=eq.${user.id}`,'PATCH',{role:'admin',display_name:'Superadmin'});
+ const [gate,profiles]=await Promise.all([
+  db(`engine_superadmin?singleton=eq.true&user_id=eq.${user.id}&select=user_id`),
+  db(`profiles?user_id=eq.${user.id}&select=user_id,role,display_name`)
+ ]);
+ const role=gate.length===1?'admin':profiles[0]?.role;
+ assert(['admin','buyer','viewer'].includes(role),'FORBIDDEN');
+ if(gate.length===1&&(!profiles.length||profiles[0].role!=='admin')){
+  await db('profiles?on_conflict=user_id','POST',{user_id:user.id,role:'admin',display_name:'Superadmin'},'resolution=merge-duplicates,return=representation');
+ }
  assert(await rpc('engine_request_rate_allowed',{p_user:user.id}),'RATE_LIMITED');
  await rpc('engine_audit',{p_user:user.id,p_action:'API_REQUEST'});
- return {id:user.id,email:user.email,role:'admin'};
+ return {id:user.id,email:user.email,role};
 }
 async function api(action:string,p:any,user:{id:string;role:string;email:string}) {
  const writer=()=>assert(['admin','buyer'].includes(user.role),'FORBIDDEN');
