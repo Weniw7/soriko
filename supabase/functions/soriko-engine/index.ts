@@ -278,6 +278,48 @@ async function api(action:string,p:any,user:{id:string;role:string;email:string}
    assert(user.role==='admin','FORBIDDEN');assert(uuid(p.id)&&['JP','EN','ES','OTHER'].includes(p.language),'INVALID_IDENTITY');assert(['HOT','WATCH','LONG_TAIL'].includes(p.priority),'INVALID_PRIORITY');
    await db(`products?id=eq.${p.id}`,'PATCH',{language:p.language,identity_status:p.language==='OTHER'?'UNVERIFIED':'VERIFIED',monitoring_priority:p.priority,updated_at:iso()});
    await rpc('engine_audit',{p_user:user.id,p_action:'VERIFY_PRODUCT_IDENTITY',p_entity:p.id});return {ok:true};}
+  case 'market':{
+   const [observations,products,sources]=await Promise.all([
+    db('market_observations?order=observed_at.desc&limit=100'),
+    db('products?select=id,name,sku&limit=1000'),
+    db('market_sources?select=id,name,adapter&limit=100')
+   ]);
+   const productMap=new Map(products.map((x:any)=>[x.id,x])),sourceMap=new Map(sources.map((x:any)=>[x.id,x]));
+   return {observations:observations.map((o:any)=>({...o,product:productMap.get(o.product_id)??null,source:sourceMap.get(o.source_id)??null}))};
+  }
+  case 'import_market':{
+   writer();assert(Array.isArray(p.rows)&&p.rows.length>0&&p.rows.length<=100,'IMPORT_LIMIT_100');
+   const [products,s]=await Promise.all([db('products?select=id,name,sku,language,identity_status&limit=1000'),source('market_import')]);
+   const rows=[];let quarantined=0;
+   for(const row of p.rows){
+    const matches=products.filter((x:any)=>uuid(row.product_id)?x.id===row.product_id:
+      (typeof row.product_name==='string'&&normalizeText(x.name)===normalizeText(row.product_name))||(typeof row.sku==='string'&&x.sku===row.sku));
+    assert(matches.length===1,'INVALID_REFERENCE');const product=matches[0];
+    assert(typeof row.external_listing_id==='string'&&row.external_listing_id.trim().length>0&&row.external_listing_id.length<=200,'INVALID_LISTING');
+    assert(['ASKING','SOLD'].includes(row.kind),'INVALID_EVIDENCE_KIND');
+    assert(typeof row.price==='number'&&Number.isFinite(row.price)&&row.price>0,'INVALID_PRICE');
+    assert(typeof row.shipping_price==='number'&&Number.isFinite(row.shipping_price)&&row.shipping_price>=0,'SHIPPING_REQUIRED');
+    assert(['JPY','EUR','USD','GBP'].includes(row.currency),'INVALID_CURRENCY');
+    const observedAt=row.observed_at??iso();assert(Number.isFinite(Date.parse(observedAt))&&Date.parse(observedAt)<=Date.now()+60000,'INVALID_OBSERVED_AT');
+    let soldAt=null;if(row.kind==='SOLD'){soldAt=row.sold_at;assert(typeof soldAt==='string'&&Number.isFinite(Date.parse(soldAt))&&Date.parse(soldAt)<=Date.now()+60000,'SOLD_AT_REQUIRED');}
+    if(row.source_url!=null)assert(/^https:\/\/[^\s]+$/.test(row.source_url),'INVALID_SOURCE_URL');
+    if(row.seller_country!=null)assert(/^[A-Z]{2}$/.test(row.seller_country),'INVALID_COUNTRY');
+    const verified=row.identity_verified===true&&product.identity_status==='VERIFIED';
+    if(!verified)quarantined++;
+    const totalEur=await currencyToEur(row.price+row.shipping_price,row.currency);
+    const keyPayload={source:s.id,product:product.id,external:String(row.external_listing_id),kind:row.kind,stamp:row.kind==='SOLD'?soldAt:observedAt.slice(0,13)};
+    rows.push({product_id:product.id,source_id:s.id,external_listing_id:String(row.external_listing_id),source_url:row.source_url??null,observed_at:observedAt,source_published_at:row.source_published_at??soldAt,
+      kind:row.kind,price:row.price,shipping_price:row.shipping_price,currency:row.currency,total_eur:totalEur,language:product.language,condition:row.condition??'SEALED_UNSPECIFIED',
+      seller_key:typeof row.seller_name==='string'&&row.seller_name.trim()?await hash(row.seller_name.trim()):null,seller_country:row.seller_country??null,delivery_country:'ES',
+      available:row.kind==='ASKING',quantity:row.quantity??null,sold_at:soldAt,identity_verified:verified,match_reason:verified?'MANUAL_VERIFIED':'MANUAL_QUARANTINED',
+      raw_payload:{note:'Manual verified-market import. Source record must remain auditable outside Soriko.',source_label:row.source_label??null},observation_key:await hash(JSON.stringify(keyPayload))});
+   }
+   const inserted=await insertRows('market_observations',rows,'observation_key');
+   await db(`market_sources?id=eq.${s.id}`,'PATCH',{health:'HEALTHY',last_success_at:iso(),last_error:null});
+   await insertRows('engine_jobs',[{kind:'recalculate',dedupe_key:`market-import:recalculate:${hour()}`}],'dedupe_key');
+   await rpc('engine_audit',{p_user:user.id,p_action:'IMPORT_MARKET',p_entity:String(inserted)});
+   return {inserted,validated:rows.length-quarantined,quarantined};
+  }
   case 'suppliers':{
    const [suppliers,quotes,products]=await Promise.all([
     db('suppliers?order=name'),
