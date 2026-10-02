@@ -152,6 +152,53 @@ async function work() {
  }
  return {jobs:done};
 }
+async function currencyToEur(amount:number,currency:string):Promise<number> {
+ if(currency==='EUR') return Math.round(amount*100)/100;
+ const rates=await db(`engine_fx_rates?currency=eq.${currency}&order=rate_date.desc&limit=1`);
+ assert(rates.length&&Number(rates[0].units_per_eur)>0,'FX_RATE_MISSING');
+ return Math.round((amount/Number(rates[0].units_per_eur))*100)/100;
+}
+async function engineReadiness() {
+ const [products,quotes,observations,sources]=await Promise.all([
+  db('products?select=id,identity_status&active=eq.true&limit=1000'),
+  db('supplier_listings?select=id&limit=1000'),
+  db('market_observations?select=id,kind&limit=1000'),
+  db('market_sources?select=id,adapter,active,health&adapter=not.is.null&limit=100')
+ ]);
+ const observedSales=observations.filter((o:any)=>o.kind==='SOLD').length;
+ const ebay=sources.find((s:any)=>s.adapter==='ebay_browse');
+ return {
+  products:products.length,
+  verifiedProducts:products.filter((p:any)=>p.identity_status==='VERIFIED').length,
+  supplierQuotes:quotes.length,
+  marketObservations:observations.length,
+  observedSales,
+  healthySources:sources.filter((s:any)=>s.active&&s.health==='HEALTHY').length,
+  ebayCredentialsPresent:!!Deno.env.get('EBAY_CLIENT_ID')&&!!Deno.env.get('EBAY_CLIENT_SECRET'),
+  ebayActive:!!ebay?.active,
+  liveOpportunityReady:quotes.length>0&&observedSales>=3
+ };
+}
+async function requestInvite(rawEmail:unknown) {
+ const email=typeof rawEmail==='string'?rawEmail.trim().toLowerCase():'';
+ assert(email.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),'INVALID_EMAIL');
+ const role=await rpc('engine_allowlisted_role',{p_email:email});
+ // Deliberately return the same response for unauthorized emails to avoid leaking the allowlist.
+ if(!['admin','buyer','viewer'].includes(role)) return {ok:true};
+ const res=await fetch(`${BASE}/auth/v1/invite?redirect_to=${encodeURIComponent('https://sorico.alfonso-millan.workers.dev/admin/')}`,{
+  method:'POST',
+  headers:{apikey:SERVICE,Authorization:`Bearer ${SERVICE}`,'Content-Type':'application/json'},
+  body:JSON.stringify({email}),
+  signal:AbortSignal.timeout(15000)
+ });
+ if(!res.ok){
+  const body=await res.text();
+  if((res.status===400||res.status===422)&&/already|registered|exists|invited/i.test(body)) return {ok:true};
+  if(res.status===429) throw new Error('RATE_LIMITED');
+  throw new Error('INVITE_FAILED');
+ }
+ return {ok:true};
+}
 async function staff(req:Request) {
  const bearer=req.headers.get('authorization');assert(typeof bearer==='string'&&bearer.startsWith('Bearer '),'UNAUTHENTICATED');
  const res=await fetch(`${BASE}/auth/v1/user`,{headers:{apikey:SERVICE,Authorization:bearer},signal:AbortSignal.timeout(10000)});
@@ -173,7 +220,7 @@ async function staff(req:Request) {
 async function api(action:string,p:any,user:{id:string;role:string;email:string}) {
  const writer=()=>assert(['admin','buyer'].includes(user.role),'FORBIDDEN');
  switch(action){
-  case 'bootstrap':return {user,settings:(await db('engine_settings?id=eq.1'))[0],version:MODEL_VERSION,ebayCredentialsPresent:!!Deno.env.get('EBAY_CLIENT_ID')&&!!Deno.env.get('EBAY_CLIENT_SECRET')};
+  case 'bootstrap':return {user,settings:(await db('engine_settings?id=eq.1'))[0],version:MODEL_VERSION,readiness:await engineReadiness()};
   case 'dashboard':{
    const [products,metrics,sources,jobs,opportunities,alerts,fxRates]=await Promise.all([
     db('products?select=id,sku,name,language,product_type,identity_status,monitoring_priority,market_catalog_id&active=eq.true&order=name&limit=1000'),
@@ -190,12 +237,37 @@ async function api(action:string,p:any,user:{id:string;role:string;email:string}
    assert(uuid(p.productId),'INVALID_PRODUCT');assert(p.costs&&typeof p.costs==='object','INVALID_COSTS');
    const product=(await db(`products?id=eq.${p.productId}`))[0];assert(product,'NOT_FOUND');
    const [metrics,settings]=await Promise.all([db(`engine_latest_metrics?product_id=eq.${p.productId}`),db('engine_settings?id=eq.1')]);
-   const m=metrics[0]?.details??calculateMarket([],iso());const e=calculateEconomics(p.costs as EconomicsInput);
-   // Scenario inputs are not a verified supplier quote. Never present a simulated BUY.
-   const assessment=assessOpportunity(e,m,{identityVerified:product.identity_status==='VERIFIED',supplierVerified:false,inputsVerified:false,now:iso(),maxAgeHours:settings[0].config.max_market_age_hours});
+   const m=metrics[0]?.details??calculateMarket([],iso());
+   const costs={...p.costs} as EconomicsInput;
+   let quote:any=null,supplier:any=null,supplierVerified=false,quotePriceEur:number|null=null;
+   if(p.quoteId!=null){
+    assert(uuid(p.quoteId),'INVALID_QUOTE');
+    quote=(await db(`supplier_listings?id=eq.${p.quoteId}&limit=1`))[0];assert(quote&&quote.product_id===product.id,'INVALID_QUOTE');
+    assert(!quote.valid_until||Date.parse(quote.valid_until)>=Date.now(),'QUOTE_EXPIRED');
+    supplier=(await db(`suppliers?id=eq.${quote.supplier_id}&limit=1`))[0];assert(supplier,'NOT_FOUND');
+    quotePriceEur=await currencyToEur(Number(quote.unit_price),quote.currency);
+    costs.unitPurchaseEur=quotePriceEur;
+    supplierVerified=supplier.verified===true;
+   }
+   const e=calculateEconomics(costs);
+   const assumptionsVerified=p.inputsVerified===true;
+   const assessment=assessOpportunity(e,m,{identityVerified:product.identity_status==='VERIFIED',supplierVerified,inputsVerified:assumptionsVerified,now:iso(),maxAgeHours:settings[0].config.max_market_age_hours});
+   const extra:string[]=[];
+   if(quote?.min_qty!=null&&Number(costs.quantity)<Number(quote.min_qty))extra.push('MINIMUM_QUANTITY_NOT_MET');
+   if(quote?.tax_basis==='UNKNOWN')extra.push('TAX_BASIS_UNKNOWN');
+   for(const blocker of extra)if(!assessment.blockers.includes(blocker))assessment.blockers.push(blocker);
+   if(extra.length&&assessment.decision!=='PASS')assessment.decision='REVIEW';
    let id=null;
-   if(p.save){writer();assert(uuid(p.requestId),'IDEMPOTENCY_KEY_REQUIRED');id=await rpc('engine_save_analysis',{p_product:product.id,p_user:user.id,p_key:p.requestId,p_inputs:p.costs,p_economics:e,p_assessment:assessment,p_market:m});}
-   return {product,market:m,economics:e,assessment,id,simulation:true};}
+   if(p.save){
+    writer();assert(uuid(p.requestId),'IDEMPOTENCY_KEY_REQUIRED');
+    id=await rpc('engine_save_analysis',{p_product:product.id,p_user:user.id,p_key:p.requestId,p_inputs:costs,p_economics:e,p_assessment:assessment,p_market:m});
+    if(quote){
+     const opp=(await db(`opportunities?id=eq.${id}&select=id,landed_cost_id&limit=1`))[0];
+     if(opp){await db(`opportunities?id=eq.${id}`,'PATCH',{supplier_listing_id:quote.id,rationale:'Supplier quote linked. Purchase still requires human approval and complete landed costs.'});
+      if(opp.landed_cost_id)await db(`landed_cost_calculations?id=eq.${opp.landed_cost_id}`,'PATCH',{supplier_listing_id:quote.id,inputs_verified:assumptionsVerified&&e.complete});}
+    }
+   }
+   return {product,market:m,economics:e,assessment,id,simulation:true,quote:quote?{id:quote.id,unitPrice:quote.unit_price,currency:quote.currency,unitPurchaseEur:quotePriceEur,supplier:supplier?.name,supplierVerified}:null};}
   case 'scan':{
    writer();const sources=await db('market_sources?active=eq.true&adapter=in.(cardmarket_catalog,cardmarket_guide,ecb_fx)&select=id,adapter');
    const inserted=await insertRows('engine_jobs',sources.map((s:any)=>({source_id:s.id,kind:s.adapter,dedupe_key:`manual:${s.id}:${hour()}`})),'dedupe_key');
@@ -206,17 +278,44 @@ async function api(action:string,p:any,user:{id:string;role:string;email:string}
    assert(user.role==='admin','FORBIDDEN');assert(uuid(p.id)&&['JP','EN','ES','OTHER'].includes(p.language),'INVALID_IDENTITY');assert(['HOT','WATCH','LONG_TAIL'].includes(p.priority),'INVALID_PRIORITY');
    await db(`products?id=eq.${p.id}`,'PATCH',{language:p.language,identity_status:p.language==='OTHER'?'UNVERIFIED':'VERIFIED',monitoring_priority:p.priority,updated_at:iso()});
    await rpc('engine_audit',{p_user:user.id,p_action:'VERIFY_PRODUCT_IDENTITY',p_entity:p.id});return {ok:true};}
-  case 'suppliers':return {suppliers:await db('suppliers?order=name'),quotes:await db('supplier_listings?order=captured_at.desc&limit=100')};
+  case 'suppliers':{
+   const [suppliers,quotes,products]=await Promise.all([
+    db('suppliers?order=name'),
+    db('supplier_listings?order=captured_at.desc&limit=100'),
+    db('products?select=id,name,sku&limit=1000')
+   ]);
+   const productMap=new Map(products.map((p:any)=>[p.id,p]));
+   const supplierMap=new Map(suppliers.map((s:any)=>[s.id,s]));
+   return {suppliers,quotes:quotes.map((q:any)=>({...q,product:productMap.get(q.product_id)??null,supplier:supplierMap.get(q.supplier_id)??null}))};
+  }
+  case 'quote':{
+   assert(uuid(p.id),'INVALID_QUOTE');
+   const q=(await db(`supplier_listings?id=eq.${p.id}&limit=1`))[0];assert(q,'NOT_FOUND');
+   if(q.valid_until)assert(Date.parse(q.valid_until)>=Date.now(),'QUOTE_EXPIRED');
+   const [supplier,product]=await Promise.all([(await db(`suppliers?id=eq.${q.supplier_id}&limit=1`))[0],(await db(`products?id=eq.${q.product_id}&limit=1`))[0]]);
+   assert(supplier&&product,'NOT_FOUND');
+   return {quote:q,supplier:{id:supplier.id,name:supplier.name,verified:supplier.verified},product:{id:product.id,name:product.name,sku:product.sku},unitPurchaseEur:await currencyToEur(Number(q.unit_price),q.currency)};
+  }
   case 'import_supplier':{
-   writer();assert(Array.isArray(p.rows)&&p.rows.length>0&&p.rows.length<=100,'IMPORT_LIMIT_100');const rows=[];
-   for(const row of p.rows){assert(uuid(row.product_id)&&uuid(row.supplier_id),'INVALID_REFERENCE');assert(typeof row.unit_price==='number'&&Number.isFinite(row.unit_price)&&row.unit_price>0,'INVALID_PRICE');assert(['JPY','EUR','USD','GBP'].includes(row.currency),'INVALID_CURRENCY');assert(['NET','GROSS','UNKNOWN'].includes(row.tax_basis),'TAX_BASIS_REQUIRED');
+   writer();assert(Array.isArray(p.rows)&&p.rows.length>0&&p.rows.length<=100,'IMPORT_LIMIT_100');
+   const [products,suppliers]=await Promise.all([db('products?select=id,name,sku&limit=1000'),db('suppliers?select=id,name&limit=100')]);
+   const rows=[];
+   for(const row of p.rows){
+    const productMatches=products.filter((x:any)=>uuid(row.product_id)?x.id===row.product_id:
+      (typeof row.product_name==='string'&&normalizeText(x.name)===normalizeText(row.product_name))||(typeof row.sku==='string'&&x.sku===row.sku));
+    const supplierMatches=suppliers.filter((x:any)=>uuid(row.supplier_id)?x.id===row.supplier_id:
+      typeof row.supplier_name==='string'&&normalizeText(x.name)===normalizeText(row.supplier_name));
+    assert(productMatches.length===1&&supplierMatches.length===1,'INVALID_REFERENCE');
+    assert(typeof row.unit_price==='number'&&Number.isFinite(row.unit_price)&&row.unit_price>0,'INVALID_PRICE');assert(['JPY','EUR','USD','GBP'].includes(row.currency),'INVALID_CURRENCY');assert(['NET','GROSS','UNKNOWN'].includes(row.tax_basis),'TAX_BASIS_REQUIRED');
     if(row.valid_until!=null)assert(Number.isFinite(Date.parse(row.valid_until)),'INVALID_VALIDITY');
     if(row.stock_qty!=null)assert(Number.isInteger(row.stock_qty)&&row.stock_qty>=0,'INVALID_STOCK');
     if(row.min_qty!=null)assert(Number.isInteger(row.min_qty)&&row.min_qty>0,'INVALID_QUANTITY');
     if(row.source_url!=null)assert(/^https:\/\/[^\s]+$/.test(row.source_url),'INVALID_SOURCE_URL');
-    rows.push({product_id:row.product_id,supplier_id:row.supplier_id,unit_price:row.unit_price,currency:row.currency,tax_basis:row.tax_basis,stock_qty:row.stock_qty??null,min_qty:row.min_qty??null,valid_until:row.valid_until??null,source_url:row.source_url??null,captured_at:iso(),import_key:await hash(JSON.stringify(row))});}
+    const canonical={product_id:productMatches[0].id,supplier_id:supplierMatches[0].id,unit_price:row.unit_price,currency:row.currency,tax_basis:row.tax_basis,stock_qty:row.stock_qty??null,min_qty:row.min_qty??null,valid_until:row.valid_until??null,source_url:row.source_url??null};
+    rows.push({...canonical,captured_at:iso(),import_key:await hash(JSON.stringify(canonical))});
+   }
    const inserted=await insertRows('supplier_listings',rows,'import_key');await rpc('engine_audit',{p_user:user.id,p_action:'IMPORT_SUPPLIER',p_entity:String(inserted)});
-   return {inserted,requiresLandedCalculation:true};}
+   return {inserted,matched:rows.length,requiresLandedCalculation:true};}
   case 'decision':{
    writer();assert(uuid(p.id)&&['APPROVE','REJECT','DEFER'].includes(p.decision),'INVALID_DECISION');const o=(await db(`opportunities?id=eq.${p.id}`))[0];assert(o,'NOT_FOUND');
    const r=await db('engine_decisions','POST',{opportunity_id:o.id,actor_id:user.id,decision:p.decision,notes:typeof p.notes==='string'?p.notes.slice(0,2000):null,predicted_sale_eur:o.proposed_price_eur,predicted_contribution_eur:o.estimated_profit_eur});
@@ -243,6 +342,7 @@ Deno.serve(async req=>{
   if(body.action==='work'){
    const worker=req.headers.get('x-soriko-worker');assert(worker&&await rpc('engine_worker_authorized',{p_token:worker}),'UNAUTHENTICATED');return respond(await work());
   }
+  if(body.action==='request_invite')return respond(await requestInvite(body.payload?.email));
   const user=await staff(req);return respond(await api(body.action,body.payload??{},user));
  }catch(e){const message=e instanceof Error&&/^[A-Z0-9_]+$/.test(e.message)?e.message:'REQUEST_FAILED';
   const status=['UNAUTHENTICATED','SESSION_REVOKED'].includes(message)?401:message==='FORBIDDEN'?403:message==='RATE_LIMITED'?429:message.startsWith('DATABASE_')||message==='WORKER_FAILED'?500:400;
