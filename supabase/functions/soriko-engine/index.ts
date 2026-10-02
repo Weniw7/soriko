@@ -184,16 +184,13 @@ async function staff(req:Request) {
  const res=await fetch(`${BASE}/auth/v1/user`,{headers:{apikey:SERVICE,Authorization:bearer},signal:AbortSignal.timeout(10000)});
  assert(res.ok,'UNAUTHENTICATED');const user=await res.json();assert(uuid(user.id)&&user.email_confirmed_at,'UNAUTHENTICATED');
  let session:string|undefined;
- try{const b=bearer.slice(7).split('.')[1];session=JSON.parse(atob(b.replace(/-/g,'+').replace(/_/g,'/'))).session_id;}catch{}
+ try{const p=bearer.slice(7).split('.')[1];session=JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))).session_id;}catch{}
  assert(uuid(session)&&await rpc('engine_session_active',{p_user:user.id,p_session:session}),'SESSION_REVOKED');
- const superadmin=await db(`engine_superadmin?singleton=eq.true&user_id=eq.${user.id}&select=user_id`);
- assert(superadmin.length===1,'FORBIDDEN');
- let profiles=await db(`profiles?user_id=eq.${user.id}&select=user_id,display_name,role`);
- if(!profiles.length){
-  profiles=await db('profiles?on_conflict=user_id','POST',{user_id:user.id,role:'admin',display_name:'Superadmin'},'resolution=merge-duplicates,return=representation');
- }else if(profiles[0].role!=='admin'){
-  profiles=await db(`profiles?user_id=eq.${user.id}`,'PATCH',{role:'admin',display_name:'Superadmin'});
- }
+ const gate=await db(`engine_superadmin?singleton=eq.true&user_id=eq.${user.id}&select=user_id`);
+ assert(gate.length===1,'FORBIDDEN');
+ let profiles=await db(`profiles?user_id=eq.${user.id}&select=user_id,role`);
+ if(!profiles.length)profiles=await db('profiles?on_conflict=user_id','POST',{user_id:user.id,role:'admin',display_name:'Superadmin'},'resolution=merge-duplicates,return=representation');
+ else if(profiles[0].role!=='admin')profiles=await db(`profiles?user_id=eq.${user.id}`,'PATCH',{role:'admin',display_name:'Superadmin'});
  assert(await rpc('engine_request_rate_allowed',{p_user:user.id}),'RATE_LIMITED');
  await rpc('engine_audit',{p_user:user.id,p_action:'API_REQUEST'});
  return {id:user.id,email:user.email,role:'admin'};
