@@ -13,15 +13,15 @@ Implementación: 1 de octubre de 2026. Panel privado de datos de mercado y apoyo
 
 La tienda pública conserva sus páginas y diseño. El HTML del panel es un shell estático sin datos de negocio. Los datos privados se obtienen de la función únicamente después de validar JWT, sesión activa y rol del equipo. Ocultar un enlace no es una medida de autorización.
 
-## Primer acceso del propietario
+## Acceso superadmin
 
-El acceso inicial se gestiona ahora por invitación. Desde la pantalla de login, un correo previamente autorizado puede pulsar **Primera vez: enviarme acceso**. El endpoint responde de forma genérica para no revelar qué correos están en la allowlist. La invitación se crea exclusivamente desde el backend con credenciales privilegiadas y redirige a `/admin/`. Tras aceptar la invitación, la sección **Activación** permite establecer o cambiar una contraseña de al menos 12 caracteres mediante la sesión autenticada de Supabase; la contraseña nunca pasa por el backend de Soriko ni debe compartirse en el chat.
+Soriko Engine utiliza un único usuario interno de Supabase Auth. No existe registro público, invitaciones desde el panel ni alta automática de empleados.
 
-La primera invitación del propietario ya fue emitida el 2 de octubre de 2026 y existe un usuario pendiente/creado en Supabase Auth. El propietario debe aceptar personalmente el correo de Supabase y completar su credencial; ninguna contraseña se genera, almacena ni solicita por ChatGPT. Después podrá entrar con su cuenta. No hay registro público de empleados.
+El usuario superadmin está vinculado por UUID a la tabla `engine_superadmin`, que admite una sola fila. La autorización interna no depende del email, de `user_metadata` ni de una allowlist editable. `is_admin()`, `is_staff()` y `can_write()` se resuelven contra ese único superadmin.
 
-Para autorizar otra persona, un operador debe añadir su email confirmado a `engine_private.team_allowlist` con rol `viewer`, `buyer` o `admin`. No se ha creado una cuenta compartida ni se ha autorizado automáticamente a Santi. No se admiten roles procedentes de `user_metadata`.
+La allowlist anterior permanece anulada: `engine_allowlisted_role()` no concede ningún rol. El navegador no puede crear, modificar ni borrar perfiles internos. Cualquier cuenta de Supabase distinta del UUID de superadmin debe recibir `FORBIDDEN` aunque consiga autenticarse.
 
-Roles: viewer consulta y simula; buyer también guarda análisis, importa ofertas, solicita lecturas y registra decisiones; admin además revisa identidades y activa fuentes. Los clientes no pueden leer inteligencia interna. Los navegadores no pueden insertar ni actualizar perfiles de empleados.
+El acceso se realiza únicamente con email + contraseña. La sección **Activación** permite cambiar la contraseña desde una sesión válida. La contraseña no se almacena en el repositorio ni debe compartirse por chat.
 
 ## Fuentes conectadas de verdad
 
