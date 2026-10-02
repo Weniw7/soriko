@@ -179,26 +179,6 @@ async function engineReadiness() {
   liveOpportunityReady:quotes.length>0&&observedSales>=3
  };
 }
-async function requestInvite(rawEmail:unknown) {
- const email=typeof rawEmail==='string'?rawEmail.trim().toLowerCase():'';
- assert(email.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),'INVALID_EMAIL');
- const role=await rpc('engine_allowlisted_role',{p_email:email});
- // Deliberately return the same response for unauthorized emails to avoid leaking the allowlist.
- if(!['admin','buyer','viewer'].includes(role)) return {ok:true};
- const res=await fetch(`${BASE}/auth/v1/invite?redirect_to=${encodeURIComponent('https://sorico.alfonso-millan.workers.dev/admin/')}`,{
-  method:'POST',
-  headers:{apikey:SERVICE,Authorization:`Bearer ${SERVICE}`,'Content-Type':'application/json'},
-  body:JSON.stringify({email}),
-  signal:AbortSignal.timeout(15000)
- });
- if(!res.ok){
-  const body=await res.text();
-  if((res.status===400||res.status===422)&&/already|registered|exists|invited/i.test(body)) return {ok:true};
-  if(res.status===429) throw new Error('RATE_LIMITED');
-  throw new Error('INVITE_FAILED');
- }
- return {ok:true};
-}
 async function staff(req:Request) {
  const bearer=req.headers.get('authorization');assert(typeof bearer==='string'&&bearer.startsWith('Bearer '),'UNAUTHENTICATED');
  const res=await fetch(`${BASE}/auth/v1/user`,{headers:{apikey:SERVICE,Authorization:bearer},signal:AbortSignal.timeout(10000)});
@@ -206,16 +186,17 @@ async function staff(req:Request) {
  let session:string|undefined;
  try{const b=bearer.slice(7).split('.')[1];session=JSON.parse(atob(b.replace(/-/g,'+').replace(/_/g,'/'))).session_id;}catch{}
  assert(uuid(session)&&await rpc('engine_session_active',{p_user:user.id,p_session:session}),'SESSION_REVOKED');
+ const superadmin=await db(`engine_superadmin?singleton=eq.true&user_id=eq.${user.id}&select=user_id`);
+ assert(superadmin.length===1,'FORBIDDEN');
  let profiles=await db(`profiles?user_id=eq.${user.id}&select=user_id,display_name,role`);
- if(!profiles.length){const role=await rpc('engine_allowlisted_role',{p_email:user.email});
-  assert(['admin','buyer','viewer'].includes(role),'FORBIDDEN');
-  profiles=await db('profiles?on_conflict=user_id','POST',{user_id:user.id,role,display_name:user.email},'resolution=ignore-duplicates,return=representation');
-  if(!profiles.length)profiles=await db(`profiles?user_id=eq.${user.id}&select=user_id,display_name,role`);
+ if(!profiles.length){
+  profiles=await db('profiles?on_conflict=user_id','POST',{user_id:user.id,role:'admin',display_name:'Superadmin'},'resolution=merge-duplicates,return=representation');
+ }else if(profiles[0].role!=='admin'){
+  profiles=await db(`profiles?user_id=eq.${user.id}`,'PATCH',{role:'admin',display_name:'Superadmin'});
  }
- assert(profiles.length&&['admin','buyer','viewer'].includes(profiles[0].role),'FORBIDDEN');
  assert(await rpc('engine_request_rate_allowed',{p_user:user.id}),'RATE_LIMITED');
  await rpc('engine_audit',{p_user:user.id,p_action:'API_REQUEST'});
- return {id:user.id,email:user.email,role:profiles[0].role};
+ return {id:user.id,email:user.email,role:'admin'};
 }
 async function api(action:string,p:any,user:{id:string;role:string;email:string}) {
  const writer=()=>assert(['admin','buyer'].includes(user.role),'FORBIDDEN');
@@ -384,7 +365,6 @@ Deno.serve(async req=>{
   if(body.action==='work'){
    const worker=req.headers.get('x-soriko-worker');assert(worker&&await rpc('engine_worker_authorized',{p_token:worker}),'UNAUTHENTICATED');return respond(await work());
   }
-  if(body.action==='request_invite')return respond(await requestInvite(body.payload?.email));
   const user=await staff(req);return respond(await api(body.action,body.payload??{},user));
  }catch(e){const message=e instanceof Error&&/^[A-Z0-9_]+$/.test(e.message)?e.message:'REQUEST_FAILED';
   const status=['UNAUTHENTICATED','SESSION_REVOKED'].includes(message)?401:message==='FORBIDDEN'?403:message==='RATE_LIMITED'?429:message.startsWith('DATABASE_')||message==='WORKER_FAILED'?500:400;
