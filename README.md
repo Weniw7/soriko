@@ -1,39 +1,44 @@
 # SORIKO CLUB
 
-Independent Pokémon ecommerce and sourcing platform operated by AMM CORE SOLUTIONS S.L.
+Independent Pokemon TCG ecommerce and sourcing platform by AMM CORE SOLUTIONS S.L.
 
-## Architecture
+## Live preview
 
-- Frontend / admin: Next.js 16
-- Edge runtime: Cloudflare Workers
-- Cloudflare adapter: vinext
-- Database / Auth: dedicated Supabase project
-- Source control: this dedicated GitHub repository
-- Ecommerce: Shopify will be connected later as the sales channel, not as the business-intelligence core
+- Public website and store preview: https://soriko.alfonso-millan.workers.dev/
+- Private Soriko Engine: https://soriko.alfonso-millan.workers.dev/admin/
+- Production source: GitHub `main`
+- Published Worker: `soriko` (with K; do not deploy to `sorico`)
 
-## Core modules
+The public store is a preview: no live checkout, stock or prices are promised yet.
 
-- Market Radar
-- Japan Scanner
-- Supplier Manager
-- Landed Cost Engine
-- Opportunity Scoring
-- Purchasing
-- Inventory
-- Sales Analytics
+## Current architecture
 
-## Environments
+- Public frontend / admin: Next.js 16 static export
+- Hosting: Cloudflare Workers static assets (Wrangler)
+- Business data and private auth: dedicated Supabase project
+- Source control and CI/CD: this GitHub repository
+- Later commerce phase: dedicated store inventory/catalogue and Shopify integration, without conflating commerce and Soriko Engine intelligence
 
-- Production: Cloudflare Workers
-- Database: dedicated Supabase project
-- Secrets: Cloudflare/Supabase environment variables only. Never commit secrets.
+## Modules
 
-## Deployment
+Market Radar, Japan Scanner, Supplier Manager, Landed Cost Engine, Opportunity Scoring, Purchasing, Inventory, Sales Analytics.
 
-Preview target: `https://sorico.alfonsogiozmillan.workers.dev`
+## Deploy
 
-## Status
+Each push to `main` runs dependency audit, automated tests, build, Cloudflare deployment and a verification gate for the exact commit, public pages, admin shell and CSS.
 
-Foundation initialized 2026-09-29.
+From a clean checkout, with authorized Cloudflare credentials:
 
-Deployment retry: Cloudflare write access enabled.
+```bash
+npm ci
+npm run build
+npx wrangler deploy
+```
+
+Deploy name is sourced from `wrangler.jsonc`, and public verification lives in `scripts/verify-deployment.mjs`.
+
+## Secrets and security
+
+Cloudflare and Supabase secrets are managed in the respective service, never committed.
+Only the publishable Supabase key belongs in the client. Private Engine operations validate sessions and roles on the server.
+Before store launch, review repository visibility, account permissions, RLS and Cloudflare Access.
