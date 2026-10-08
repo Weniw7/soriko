@@ -3,7 +3,7 @@ import type { Evidence, EconomicsInput } from '../../../lib/engine/core.ts';
 // Server-only credentials. Never accepted in payloads, logged, or returned.
 const BASE = Deno.env.get('SUPABASE_URL')!;
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const ORIGINS = new Set(['https://sorico.alfonso-millan.workers.dev']);
+const ORIGINS = new Set(['https://soriko.alfonso-millan.workers.dev']);
 const FEEDS = {
  cardmarket_catalog:'https://downloads.s3.cardmarket.com/productCatalog/productList/products_nonsingles_6.json',
  cardmarket_guide:'https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json',
