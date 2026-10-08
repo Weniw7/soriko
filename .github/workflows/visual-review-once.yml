@@ -1,0 +1,40 @@
+name: One-off Soriko visual review
+on:
+  push:
+    paths:
+      - '.github/workflows/visual-review-once.yml'
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install headless browser
+        run: npx --yes playwright@1.56.1 install --with-deps chromium
+      - name: Capture Soriko desktop, mobile, store and admin
+        run: |
+          npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 1500 https://soriko.alfonso-millan.workers.dev/ /tmp/home-desktop.png
+          npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "390,844" --wait-for-timeout 1500 https://soriko.alfonso-millan.workers.dev/ /tmp/home-mobile.png
+          npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 1500 https://soriko.alfonso-millan.workers.dev/shop/ /tmp/shop-desktop.png
+          npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 1500 https://soriko.alfonso-millan.workers.dev/admin/ /tmp/admin-desktop.png
+      - name: Output compact screenshot previews for review
+        run: |
+          node --input-type=module <<'EOF'
+          import sharp from 'sharp';
+          for(const name of ['home-desktop','home-mobile','shop-desktop','admin-desktop']){
+            const resized=await sharp('/tmp/'+name+'.png').resize({width:960,withoutEnlargement:true}).jpeg({quality:55,mozjpeg:true}).toBuffer();
+            const b64=resized.toString('base64');
+            console.log('SHOT_BEGIN '+name+' '+resized.length);
+            for(let i=0;i<b64.length;i+=4000)console.log('SHOT_CHUNK '+b64.slice(i,i+4000));
+            console.log('SHOT_END '+name);
+          }
+          EOF
