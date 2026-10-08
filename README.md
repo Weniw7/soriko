@@ -44,6 +44,6 @@ GitHub Actions validates dependency security, Commerce unit tests, Edge API prob
 ## Security and next steps
 
 Configure a dedicated payment merchant/sandbox, shipping rates, legal information and webhook verification before permitting checkout. Production checkout is explicitly disabled.
-The original Engine code is retained in Git history and historical database records are to be moved into a non-exposed legacy schema instead of permanently deleted.
+The original Engine source is retained in Git history. Historical database records have been moved into the non-exposed `soriko_legacy` schema. The old Engine API is disabled and its recurring jobs have been unscheduled.
 
 See `docs/ARCHITECTURE.md` and `docs/DEPLOYMENT.md`.
