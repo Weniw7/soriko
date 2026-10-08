@@ -130,6 +130,39 @@ Deno.serve(async(request:Request)=>{
   const action=body.action;
   if(typeof action!=='string')throw new HttpError(400,'ACTION_REQUIRED');
   const staff=await getStaff(request);
+  if(action==='sourcing_list'){
+   const candidates=await db<Row[]>(
+    'commerce_sourcing_candidates?select=*&order=name.asc&limit=50'
+   );
+   return respond({candidates});
+  }
+  if(action==='sourcing_update'){
+   requireRole(staff.role,['admin','manager']);
+   if(!isUuid(body.id)||!body.patch||typeof body.patch!=='object'||Array.isArray(body.patch))
+    throw new HttpError(400,'INVALID_SOURCING_UPDATE');
+   const patch=body.patch as Record<string,unknown>;
+   const allowed=new Set([
+    'sora_b2b_eur_cents','landed_unit_cost_eur_cents','planned_pvp_eur_cents',
+    'quote_verified','decision','decision_reason','sora_quote_source'
+   ]);
+   if(Object.keys(patch).length===0||Object.keys(patch).some(k=>!allowed.has(k)))
+    throw new HttpError(400,'INVALID_SOURCING_FIELDS');
+   for(const key of ['sora_b2b_eur_cents','landed_unit_cost_eur_cents','planned_pvp_eur_cents']){
+    const value=patch[key];
+    if(value!==undefined&&value!==null&&(!Number.isSafeInteger(value)||Number(value)<0||Number(value)>100000000))
+     throw new HttpError(400,'INVALID_EUR_AMOUNT');
+   }
+   if(patch.quote_verified!==undefined&&typeof patch.quote_verified!=='boolean')
+    throw new HttpError(400,'INVALID_VERIFICATION');
+   if(patch.decision!==undefined&&!['PENDING_QUOTE','REVIEW','NO_GO','BUY_CANDIDATE','EXCLUDED'].includes(String(patch.decision)))
+    throw new HttpError(400,'INVALID_DECISION');
+   if(patch.decision_reason!==undefined&&(typeof patch.decision_reason!=='string'||patch.decision_reason.length>1000))
+    throw new HttpError(400,'INVALID_REASON');
+   if(patch.sora_quote_source!==undefined&&(typeof patch.sora_quote_source!=='string'||patch.sora_quote_source.length>500))
+    throw new HttpError(400,'INVALID_QUOTE_SOURCE');
+   const updated=await rpc('commerce_update_sourcing',{p_id:body.id,p_patch:patch,p_actor:staff.id});
+   return respond({updated});
+  }
   if(action==='dashboard'){
    const items=await catalogue(true);
    const orders=await db<Array<{id:string;status:string;total_cents:number;created_at:string}>>(

@@ -1,0 +1,32 @@
+/* Soriko Commerce / Sora sourcing — internal only */
+.sora-board .sora-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.sora-board .sora-controls{display:flex;align-items:flex-end;flex-wrap:wrap;gap:16px;margin:20px 0 18px}
+.sora-board .sora-controls>label:first-child{width:min(100%,300px)}
+.sora-board .sora-controls .sora-check{margin:0 0 10px}
+.sora-board .sora-check{display:flex;align-items:center;gap:8px;color:#b9d0db;font-size:12px}
+.sora-board .sora-check input{width:16px;height:16px;accent-color:#76e6c5}
+.sora-board .sora-table{min-width:930px}
+.sora-board .sora-table th{font-size:10px;white-space:nowrap}
+.sora-board .sora-table td{vertical-align:middle;font-variant-numeric:tabular-nums}
+.sora-board .sora-table td:first-child{min-width:190px}
+.sora-board .sora-links{display:flex;gap:9px;flex-wrap:wrap}
+.sora-board .sora-links a,.sora-review a{font-size:12px;font-weight:750;color:#76e6c5;text-decoration:underline;text-underline-offset:3px}
+.sora-board .sora-state{display:inline-flex;border-radius:100px;border:1px solid #50637b;background:#243344;padding:6px 10px;font-size:10px;font-weight:800;white-space:nowrap}
+.sora-board .sora-state.pending_quote{color:#e8c681;border-color:#6b5730}
+.sora-board .sora-state.no_go,.sora-board .sora-state.excluded{color:#ffb0a2;border-color:#7d4542}
+.sora-board .sora-state.buy_candidate{color:#8ce9c8;border-color:#267e5d}
+.sora-board .sora-footnote{font-size:11px!important;color:#93a6b4;margin-top:20px;line-height:1.7}
+.sora-board .sora-reference-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:19px 0}
+.sora-board .sora-reference-row span{padding:12px;background:#0e1721;border:1px solid #283949;border-radius:7px;font-size:10px;color:#94a6b4}
+.sora-board .sora-reference-row b{display:block;margin-top:7px;color:#f2f8fb;font-size:17px}
+.sora-board .sora-edit{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;padding:14px 0}
+.sora-board .sora-wide{grid-column:1/-1}
+.sora-board .sora-edit>label{min-width:0}
+.sora-board .sora-edit .sora-check{grid-column:1/-1;padding:6px 0}
+.sora-board .sora-preview{background:#20322d;border:1px solid #36594d;padding:16px;color:#c8dfd8;border-radius:8px;line-height:1.6}
+.sora-board .sora-preview strong{font-size:22px;color:#8eedcd;margin-right:10px}
+.sora-board .sora-action-row{display:flex;align-items:center;gap:12px}
+.sora-board .sora-good{color:#8fe7c9;font-size:12px!important}
+@media(max-width:1000px){.sora-board .sora-stats{grid-template-columns:repeat(2,1fr)}.sora-board .sora-reference-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.sora-board .sora-edit{grid-template-columns:1fr}.sora-board .sora-reference-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:540px){.sora-board .sora-stats{grid-template-columns:1fr}.sora-board .sora-reference-row{grid-template-columns:1fr 1fr}.sora-board .sora-reference-row b{font-size:14px}}

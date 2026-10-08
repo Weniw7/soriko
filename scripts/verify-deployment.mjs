@@ -32,7 +32,7 @@ const publicRoutes = [
   ['/journal/', ['SORIKO JOURNAL']],
   ['/lab/', ['SORIKO LAB']]
 ];
-const privateRoutes = ['/admin/','/admin/products/','/admin/inventory/','/admin/orders/'];
+const privateRoutes = ['/admin/','/admin/products/','/admin/inventory/','/admin/orders/','/admin/sourcing/'];
 
 async function verifyRoute(path, required) {
   for (let attempt = 1; attempt <= 4; attempt++) {
