@@ -1,61 +1,46 @@
-# Soriko Club deployment
+# Soriko Commerce release guide
 
-## Live preview — October 2026
+## Target
 
-- Public preview: `https://soriko.alfonso-millan.workers.dev/`
-- Private Engine: `https://soriko.alfonso-millan.workers.dev/admin/`
-- Cloudflare Worker name: **soriko** (K), set by `wrangler.jsonc`.
-- GitHub branch: `main`.
-- Framework output: Next.js static export in `out/`.
-- Deployment pipeline: `.github/workflows/deploy.yml`.
+- Canonical Worker: `soriko` (with K, not `sorico`)
+- URL: `https://soriko.alfonso-millan.workers.dev`
+- Existing Supabase: `soriko-club`
+- Commerce API: `soriko-commerce`
+- Branch deployed: `main`
 
-Never deploy production changes to the obsolete `sorico` Worker (C); it is a different service.
-
-## Current deployment steps
+## Local validation
 
 ```bash
 npm ci
 npm audit --audit-level=moderate
-node --experimental-strip-types --test tests/engine.test.mjs
+node --experimental-strip-types --test tests/*.test.mjs
 npx tsc --project tsconfig.edge.json
 npm run build
-npx wrangler deploy
-node scripts/verify-deployment.mjs
+node scripts/verify-commerce.mjs
+npx wrangler deploy --dry-run
 ```
 
-GitHub Actions handles the commands on each push. The verifier checks the exact published commit, public routes, internal route shells and loaded CSS.
+## Production
 
-## Environment variables
+GitHub Actions runs audit, tests, static build, and deploys `out/` assets. It records exact SHA using `scripts/build-marker.mjs`, then probes the live public routes and CSS using `scripts/verify-deployment.mjs`.
+The Commerce API endpoint is independently checked for health, anonymous access restrictions, and allowed origins.
+Do not bypass either verification gate after a failed run.
 
-Public:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+## Authentication and secrets
 
-GitHub Actions secrets and vars:
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+Browser: `NEXT_PUBLIC_SUPABASE_URL` and publishable Supabase key only.
+Server Edge Function: `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, provisioned by Supabase.
+Cloudflare CI credentials: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` through GitHub secrets.
+Never commit server keys or customer details.
 
-Supabase Edge Function `soriko-engine` handles authenticated operations and role enforcement; never expose service or secret keys to static assets.
+Staff accounts are from existing Auth. The `commerce_staff` table supplies admin, manager, operator or viewer role and active status.
+No public registration in staff console.
 
-## Before Shopify launch
+## Operating policy
 
-- `sorikoclub.com` can show the public Soriko preview on Cloudflare.
-- `/admin/` is the private intelligence workspace.
-- Storefront preview must not suggest that stock or checkout is live.
-
-## After Shopify launch
-
-- `sorikoclub.com` and `www.sorikoclub.com`: storefront.
-- `admin.sorikoclub.com`: Soriko Engine on Cloudflare.
-- Supabase: business intelligence and internal sourcing records.
-- Commerce stock, reservations and fulfillment must have a deliberate source of truth and reconciled integration.
-
-Shopify must not overwrite sourcing costs, supplier history, valuations or opportunity-scoring data.
-
-## Release safeguards
-
-1. No production deploy if `npm audit` fails.
-2. Pin dependencies, commit lockfiles and run tests/build first.
-3. Compare release marker to commit SHA on the intended canonical hostname.
-4. Verify live pages and CSS assets before calling the release successful.
-5. Before store launch, restrict repository visibility, enable MFA, review RLS and place admin behind Cloudflare Access in addition to Supabase Auth.
+- The storefront only displays published variants with a configured price and tax.
+- Inventory starts at zero: no Legacy Engine market observations are sellable stock.
+- Adjustments require staff role, a reason, and a unique idempotency key.
+- Sales checkout is disabled until signed payment webhook, taxes, shipping and legal content are verified.
+- Never deploy schema drops or destructive data migrations as a routine site change.
+- Existing legacy records should be archived in a private, non-API schema with a recovery path.

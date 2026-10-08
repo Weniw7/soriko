@@ -1,0 +1,41 @@
+/* Functional Commerce Store additions. Existing Soriko brand selectors stay unchanged. */
+.commerce-language{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.commerce-language button{font:inherit;cursor:pointer;border:1px solid var(--line);border-radius:100px;
+ background:transparent;color:var(--ink);font-size:11px;font-weight:800;padding:12px 17px}
+.commerce-language button.activeFilter{background:var(--ink);color:#fff}
+.commerce-language .commerce-cart-trigger{margin-left:auto;background:#f2c94c;border-color:#111114}
+.commerce-toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:0 0 26px}
+.commerce-toolbar label{display:grid;gap:7px;font-size:11px;font-weight:800;flex:1;min-width:145px}
+.commerce-toolbar label.commerce-search{flex:2;min-width:230px}
+.commerce-toolbar input,.commerce-toolbar select{width:100%;padding:13px 12px;min-height:45px;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--ink);font:inherit;font-size:13px}
+.commerce-empty{background:#fff;border:1px solid var(--line);border-radius:20px;padding:60px 42px;text-align:center;min-height:245px}
+.commerce-empty h3{font-size:clamp(28px,4vw,47px);margin:10px auto}
+.commerce-empty p{max-width:530px;margin:12px auto 24px;color:var(--muted);line-height:1.65}
+.commerce-empty a{font-weight:900;text-decoration:underline}
+.commerce-product-visual{background:#e8e2d5;display:grid;place-items:center;overflow:hidden}
+.commerce-product-visual img{width:90%;height:90%;object-fit:contain}
+.commerce-price-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 0;border-top:1px solid var(--line)}
+.commerce-price-row strong{font-size:24px;font-weight:900}
+.commerce-price-row small{font-size:10px;font-weight:800;color:var(--muted)}
+.commerce-product-visual .packShape{max-width:76%}
+.pokemonProductInfo .productBottom button{border:0;background:var(--ink);color:#fff;border-radius:7px;padding:11px;font-size:11px;font-weight:900;cursor:pointer}
+.pokemonProductInfo .productBottom button:disabled{opacity:.4;cursor:not-allowed}
+.commerce-cart-overlay{position:fixed;inset:0;background:#1111148a;z-index:1000;display:flex;justify-content:flex-end}
+.commerce-cart{width:min(100%,450px);height:100%;background:var(--paper);color:var(--ink);padding:27px;display:flex;flex-direction:column;box-shadow:-15px 0 55px #11111444}
+.commerce-cart header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:20px}
+.commerce-cart header h2{font-size:35px;letter-spacing:-.05em;margin:0}
+.commerce-cart header button{border:0;background:none;font-size:22px;cursor:pointer}
+.commerce-cart-lines{flex:1;overflow:auto;padding:24px 0}
+.commerce-cart-line{padding:15px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.commerce-cart-line div:first-child{display:grid;gap:7px}
+.commerce-cart-line strong{font-size:15px}
+.commerce-cart-line small{font-size:11px;color:var(--muted)}
+.commerce-cart-line b{font-size:14px}
+.commerce-qty{display:flex;align-items:center;gap:9px;white-space:nowrap}
+.commerce-qty button{width:27px;height:27px;border-radius:7px;border:1px solid var(--line);background:white;cursor:pointer}
+.commerce-qty button:disabled{opacity:.3}
+.commerce-cart footer{border-top:1px solid var(--line);padding-top:18px}
+.commerce-cart footer p{display:flex;justify-content:space-between;font-size:18px;font-weight:900}
+.commerce-cart footer small{display:block;font-size:11px;color:var(--muted);line-height:1.5;margin:12px 0}
+.commerce-checkout-disabled{width:100%;padding:16px;border:0;border-radius:8px;background:#ccc;color:#555;font-weight:900}
+@media(max-width:640px){.commerce-language .commerce-cart-trigger{margin-left:0}.commerce-toolbar label{min-width:100%}.commerce-cart{padding:20px}.commerce-empty{padding:35px 20px}}

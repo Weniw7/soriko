@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "types": []
   },
-  "files": ["tests/deno-shim.d.ts", "supabase/functions/soriko-engine/index.ts"]
+  "files": ["tests/deno-shim.d.ts", "supabase/functions/soriko-commerce/index.ts"]
 }

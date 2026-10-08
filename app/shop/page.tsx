@@ -1,17 +1,6 @@
 import Link from "next/link";
-
-const products = [
-  { badge: "30 YEARS", meta: "JAPÓN · BOOSTER BOX", title: "30th Anniversary", copy: "La celebración de tres décadas del JCC Pokémon.", tone: "anniversary", status: "VIGILANDO STOCK" },
-  { badge: "JAPAN", meta: "JAPÓN · BOOSTER BOX", title: "Mega Dream ex", copy: "Producto japonés sellado para abrir o guardar.", tone: "dream", status: "JAPAN SELECT" },
-  { badge: "151", meta: "JAPÓN · BOOSTER BOX", title: "Pokémon Card 151", copy: "Kanto vuelve en uno de los sets modernos más coleccionados.", tone: "kanto", status: "COLLECTOR PICK" },
-  { badge: "JP", meta: "JAPÓN · BOOSTER BOX", title: "Abyss Eye", copy: "Una de las cajas japonesas que seguimos en Soriko Radar.", tone: "abyss", status: "RADAR" },
-  { badge: "ES", meta: "ESPAÑOL · JCC POKÉMON", title: "30.º Aniversario", copy: "Producto en español alrededor de la gran celebración de 2026.", tone: "spanish", status: "PRÓXIMAMENTE" },
-  { badge: "SEALED", meta: "THE VAULT · SELLADO", title: "Sealed Picks", copy: "Selección para quien colecciona también sin abrir.", tone: "sealed", status: "THE VAULT" },
-  { badge: "GEAR", meta: "SORIKO LAB", title: "Booster Display Stand", copy: "Soporte propio para exponer booster boxes y producto sellado.", tone: "lab", status: "PROTOTYPE" },
-  { badge: "CLUB", meta: "SORIKO CLUB", title: "Restock Alerts", copy: "Wishlist y alertas para perseguir la pieza que te falta.", tone: "club", status: "COMING SOON" },
-];
-
-const filters = ["Todo Pokémon", "Japón", "Español", "Inglés", "30.º Aniversario", "Booster Boxes", "Sellado", "Accesorios"];
+import ShopCatalog from "../../components/commerce/ShopCatalog";
+import "../../components/commerce/storefront.css";
 
 export default function ShopPage() {
   return (
@@ -36,30 +25,7 @@ export default function ShopPage() {
         </div>
       </section>
 
-      <div className="categoryStrip pageWidth pokemonFilters">
-        {filters.map((filter, index) => <span className={index === 0 ? "activeFilter" : ""} key={filter}>{filter}</span>)}
-      </div>
-
-      <section className="catalogSection pageWidth" id="anniversary">
-        <div className="catalogHeading pokemonCatalogHeading">
-          <div><p className="kicker">SORIKO PICKS</p><h2>Pokémon que merece un sitio en la estantería.</h2></div>
-          <span>Catálogo demo · stock final pendiente de confirmación</span>
-        </div>
-        <div className="pokemonProductGrid shopProductGrid">
-          {products.map((product) => (
-            <article className="pokemonProductCard" id={product.title.includes("Mega") ? "japan" : product.title.includes("Sealed") ? "sealed" : product.title.includes("151") ? "151" : undefined} key={product.title}>
-              <div className={"pokemonProductVisual " + product.tone}>
-                <span className="productBadge">{product.badge}</span>
-                <div className="packShape"><span>SORIKO</span><strong>{product.title}</strong><small>POKÉMON TCG</small></div>
-              </div>
-              <div className="pokemonProductInfo">
-                <span>{product.meta}</span><h3>{product.title}</h3><p>{product.copy}</p>
-                <div className="productBottom"><b>{product.status}</b><Link href="/club/">Añadir a wishlist →</Link></div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      <ShopCatalog />
 
       <section className="shopPromise">
         <div className="pageWidth shopPromiseGrid">

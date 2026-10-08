@@ -32,10 +32,7 @@ const publicRoutes = [
   ['/journal/', ['SORIKO JOURNAL']],
   ['/lab/', ['SORIKO LAB']]
 ];
-const privateRoutes = [
-  '/admin/', '/admin/radar/', '/admin/analyze/', '/admin/products/',
-  '/admin/opportunities/', '/admin/suppliers/', '/admin/jobs/', '/admin/alerts/'
-];
+const privateRoutes = ['/admin/','/admin/products/','/admin/inventory/','/admin/orders/'];
 
 async function verifyRoute(path, required) {
   for (let attempt = 1; attempt <= 4; attempt++) {
@@ -55,7 +52,7 @@ for (const [path, markers] of publicRoutes) {
   if (path === '/') homepage = html;
 }
 for (const path of privateRoutes) {
-  await verifyRoute(path, ['Soriko Engine | Equipo', 'noindex']);
+  await verifyRoute(path, ['Soriko Commerce | Equipo', 'noindex']);
 }
 
 const cssMatch = homepage.match(/href="([^"]+\.css(?:\?[^"]*)?)"/);
@@ -66,4 +63,4 @@ const cssResponse = await fetch(cssUrl, { cache: 'no-store', signal: AbortSignal
 const css = await cssResponse.text();
 if (!cssResponse.ok || css.length < 1000) throw new Error('Homepage stylesheet is missing or unexpectedly empty');
 console.log('CSS asset', cssResponse.status, css.length, 'bytes');
-console.log('All Soriko public and private routes verified for commit', expected);
+console.log('All Soriko Commerce public and private routes verified for commit', expected);
