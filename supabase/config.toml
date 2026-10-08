@@ -1,7 +1,7 @@
 project_id = "soriko-club"
 
-[functions.soriko-engine]
-# Custom auth is mandatory: server-verified Supabase JWT + active session + staff role,
-# or a high-entropy Vault-held worker token for the work action only.
+[functions.soriko-commerce]
+# Public catalogue GET only; all private Commerce POST actions perform staff
+# authentication, active-session checks, and role authorization on the server.
 verify_jwt = false
-entrypoint = "./functions/soriko-engine/index.ts"
+entrypoint = "./functions/soriko-commerce/index.ts"

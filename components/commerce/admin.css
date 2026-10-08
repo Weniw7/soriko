@@ -1,0 +1,23 @@
+/* Commerce uses the established Soriko Engine visual vocabulary, without Engine routes. */
+.commerce-admin .en-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.commerce-admin .commerce-quick{display:flex;gap:13px;flex-wrap:wrap;margin:22px 0}
+.commerce-admin .commerce-quick a{background:#183029;border:1px solid #3a6557;padding:13px 15px;border-radius:8px;color:#92e6cb;font-weight:800;font-size:12px}
+.commerce-admin .commerce-panel h2{margin-bottom:24px}
+.commerce-admin .commerce-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.commerce-admin .commerce-form label{min-width:0}
+.commerce-admin .commerce-form-wide{grid-column:1/-1}
+.commerce-admin .commerce-form label input,.commerce-admin .commerce-form label select{background:#0d1620}
+.commerce-admin .commerce-subtext{display:block;font-size:11px;color:#94a6b4;margin-top:5px}
+.commerce-admin .en-panel h2{color:#edf4f7}
+.commerce-admin .en-panel p{line-height:1.7}
+.commerce-admin table td{font-size:12px;padding:14px;white-space:nowrap}
+.commerce-admin table td:first-child{min-width:180px;white-space:normal}
+.commerce-admin table td strong{font-size:12px}
+.commerce-admin button.en-ghost{padding:9px 12px;font-size:11px}
+.commerce-admin .en-insight{flex-wrap:wrap}
+.commerce-admin .en-insight a{margin-left:auto}
+@media(max-width:1100px){.commerce-admin .en-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:780px){.commerce-admin .commerce-form{grid-template-columns:1fr}
+.commerce-admin .en-stats{grid-template-columns:1fr 1fr}}
+@media(max-width:540px){.commerce-admin .en-stats{grid-template-columns:1fr}
+.commerce-admin .en-top{flex-wrap:wrap}}

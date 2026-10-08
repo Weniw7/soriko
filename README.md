@@ -1,44 +1,49 @@
-# SORIKO CLUB
+# SORIKO CLUB — Commerce
 
-Independent Pokemon TCG ecommerce and sourcing platform by AMM CORE SOLUTIONS S.L.
+Pokémon TCG ecommerce built with Next.js, Cloudflare Workers and a **single existing Supabase project**. No additional Supabase project or monthly fixed project charge was introduced.
 
-## Live preview
+## URLs
 
-- Public website and store preview: https://soriko.alfonso-millan.workers.dev/
-- Private Soriko Engine: https://soriko.alfonso-millan.workers.dev/admin/
-- Production source: GitHub `main`
-- Published Worker: `soriko` (with K; do not deploy to `sorico`)
+- Public website: https://soriko.alfonso-millan.workers.dev/
+- Live-stock catalogue (checkout disabled): https://soriko.alfonso-millan.workers.dev/shop/
+- Private operations: https://soriko.alfonso-millan.workers.dev/admin/
 
-The public store is a preview: no live checkout, stock or prices are promised yet.
+## Architecture
 
-## Current architecture
+- Cloudflare Worker: `soriko` (K), serving the original Next.js static frontend.
+- Supabase project: `soriko-club` (existing).
+- Supabase Edge Function: `soriko-commerce` handles public catalogue and staff-only mutations.
+- Database: `public.commerce_*` tables protected with RLS; only the server-side service role can access retail tables.
+- Auth: existing Supabase users, mapped to `commerce_staff` with least-privilege roles.
+- No live checkout or automatic charge capture until a verified gateway is configured and explicitly approved.
 
-- Public frontend / admin: Next.js 16 static export
-- Hosting: Cloudflare Workers static assets (Wrangler)
-- Business data and private auth: dedicated Supabase project
-- Source control and CI/CD: this GitHub repository
-- Later commerce phase: dedicated store inventory/catalogue and Shopify integration, without conflating commerce and Soriko Engine intelligence
+## Commerce V1
 
-## Modules
+- Variant-aware SKUs and languages JP / EN / ES.
+- Product drafts, prices in EUR cents, VAT configuration, publishing.
+- Stock ledger: on hand, reserved, committed, damaged, and derived sellable stock.
+- Atomic and idempotent stock adjustment and order reservation stored functions.
+- Catalogue filtering, search and session-persistent local cart.
+- Private admin screens for products, inventory and order overview.
+- Orders, reservations and payments schema prepared for the next stage.
 
-Market Radar, Japan Scanner, Supplier Manager, Landed Cost Engine, Opportunity Scoring, Purchasing, Inventory, Sales Analytics.
+**Only publish real, verified merchandise and actual prices.** Legacy Soriko Engine market data must not be imported as retail stock.
 
-## Deploy
-
-Each push to `main` runs dependency audit, automated tests, build, Cloudflare deployment and a verification gate for the exact commit, public pages, admin shell and CSS.
-
-From a clean checkout, with authorized Cloudflare credentials:
+## Developers
 
 ```bash
 npm ci
+node --experimental-strip-types --test tests/*.test.mjs
+npx tsc --project tsconfig.edge.json
 npm run build
-npx wrangler deploy
+npx wrangler deploy --dry-run
 ```
 
-Deploy name is sourced from `wrangler.jsonc`, and public verification lives in `scripts/verify-deployment.mjs`.
+GitHub Actions validates dependency security, Commerce unit tests, Edge API probes and the production build before deployment. On merge to `main`, the deployment workflow publishes to the canonical `soriko` Worker and confirms the release SHA.
 
-## Secrets and security
+## Security and next steps
 
-Cloudflare and Supabase secrets are managed in the respective service, never committed.
-Only the publishable Supabase key belongs in the client. Private Engine operations validate sessions and roles on the server.
-Before store launch, review repository visibility, account permissions, RLS and Cloudflare Access.
+Configure a dedicated payment merchant/sandbox, shipping rates, legal information and webhook verification before permitting checkout. Production checkout is explicitly disabled.
+The original Engine code is retained in Git history and historical database records are to be moved into a non-exposed legacy schema instead of permanently deleted.
+
+See `docs/ARCHITECTURE.md` and `docs/DEPLOYMENT.md`.

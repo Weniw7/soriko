@@ -22,7 +22,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm audit --audit-level=moderate
-      - run: node --experimental-strip-types --test tests/engine.test.mjs
+      - run: node --experimental-strip-types --test tests/*.test.mjs
       - run: npx tsc --project tsconfig.edge.json
       - run: npm run build
       - name: Stamp the exact published commit

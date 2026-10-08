@@ -24,9 +24,11 @@ jobs:
       - run: npm ci
       - name: Dependency audit
         run: npm audit --audit-level=moderate
-      - name: Deterministic engine tests
-        run: node --experimental-strip-types --test tests/engine.test.mjs
+      - name: Commerce unit tests
+        run: node --experimental-strip-types --test tests/*.test.mjs
       - name: Check Edge Function types
         run: npx tsc --project tsconfig.edge.json
       - run: npm run build
+      - name: Commerce API smoke check
+        run: node scripts/verify-commerce.mjs
       - run: npx wrangler deploy --dry-run

@@ -1,2 +1,2 @@
-import Engine from '../../components/engine/Engine';
-export default function Page(){return <Engine view="radar"/>;}
+import CommerceAdmin from '../../components/commerce/CommerceAdmin';
+export default function Page(){return <CommerceAdmin view="overview"/>;}
