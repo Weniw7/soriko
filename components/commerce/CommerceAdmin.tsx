@@ -3,11 +3,12 @@ import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {createClient} from '@supabase/supabase-js';
 import type {Session} from '@supabase/supabase-js';
+import SoraSourcing from './SoraSourcing';
 
 const BASE=process.env.NEXT_PUBLIC_SUPABASE_URL||'https://vgxeebazmzkncbsmcrha.supabase.co';
 const KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'sb_publishable_SSDkG-X9oWgoD4qHR_bwaA_0vOG5OEv';
 const API=BASE+'/functions/v1/soriko-commerce';
-type View='overview'|'products'|'inventory'|'orders';
+type View='overview'|'products'|'inventory'|'orders'|'sourcing';
 type Role='admin'|'manager'|'operator'|'viewer';
 type Product={
  id:string;productId:string;slug:string;name:string;description:string;
@@ -20,7 +21,7 @@ type Order={id?:string;status:string;total_cents:number;created_at:string};
 type Dashboard={staff:{id:string;email:string;role:Role};products:Product[];orders:Order[]};
 const NAV:[View,string,string][]=[
  ['overview','Resumen','01'],['products','Productos','02'],
- ['inventory','Inventario','03'],['orders','Pedidos','04']
+ ['inventory','Inventario','03'],['orders','Pedidos','04'],['sourcing','Sora / Mercado','05']
 ];
 const CATEGORY:[string,string][]=[
  ['BOOSTER_BOX','Booster Box'],['ETB','Elite Trainer Box'],['BUNDLE','Booster Bundle'],
@@ -148,7 +149,7 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
     <section className="en-panel"><h2>Estado de Soriko Store</h2>
      <p>Los productos pasan por borrador, publicación y recepción de mercancía. Solo se muestra precio y disponibilidad de referencias publicadas.</p>
      <div className="commerce-quick"><Link href="/admin/products/">Gestionar productos ↗</Link>
-      <Link href="/admin/inventory/">Registrar stock ↗</Link><Link href="/shop/">Visitar tienda ↗</Link></div>
+      <Link href="/admin/inventory/">Registrar stock ↗</Link><Link href="/admin/sourcing/">Sora / Mercado ↗</Link><Link href="/shop/">Visitar tienda ↗</Link></div>
     </section>
    </>}
    {data&&view==='products'&&<>
@@ -222,6 +223,7 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
      </table></div>{products.length===0&&<p className="en-muted">Crea un producto antes de registrar mercancía.</p>}
     </section>
    </>}
+   {data&&view==='sourcing'&&<SoraSourcing request={(action,payload={})=>call(action,payload)} canWrite={Boolean(writer)}/>}
    {data&&view==='orders'&&<section className="en-panel"><h2>Pedidos ({data.orders.length})</h2>
     <p className="en-muted">El checkout comercial sigue desactivado. No se crean pedidos reales hasta integrar la pasarela y verificar sus webhooks.</p>
     <div className="en-table-wrap"><table><thead><tr><th>Fecha</th><th>Estado</th><th>Total</th>{data.staff.role!=='viewer'&&<th>ID interno</th>}</tr></thead>

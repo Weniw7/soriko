@@ -17,12 +17,14 @@ if(catalog.headers.get('access-control-allow-origin')!=='https://soriko.alfonso-
 const products=await catalog.json();
 if(!Array.isArray(products.products))throw new Error('Catalog payload invalid');
 console.log('Commerce catalog',catalog.status,products.products.length,'live references');
-const forbidden=await fetch(endpoint,{
- method:'POST',headers:{'content-type':'application/json',Origin:'https://soriko.alfonso-millan.workers.dev'},
- body:JSON.stringify({action:'dashboard'}),signal:timeout()
-});
-if(forbidden.status!==401)throw new Error('Admin endpoint allowed unauthenticated request: '+forbidden.status);
-console.log('Commerce anonymous admin denied',forbidden.status);
+for(const action of ['dashboard','sourcing_list','sourcing_update']){
+ const forbidden=await fetch(endpoint,{
+  method:'POST',headers:{'content-type':'application/json',Origin:'https://soriko.alfonso-millan.workers.dev'},
+  body:JSON.stringify({action}),signal:timeout()
+ });
+ if(forbidden.status!==401)throw new Error(action+' allowed anonymous request: '+forbidden.status);
+ console.log('Commerce staff action denied anonymously:',action,forbidden.status);
+}
 const hostile=await get('catalog',{Origin:'https://external-site.invalid'});
 if(hostile.status!==403)throw new Error('Unexpected Commerce cross-origin access: '+hostile.status);
 console.log('Commerce hostile origin denied',hostile.status);
