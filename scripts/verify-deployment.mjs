@@ -1,5 +1,5 @@
 // Public read-only probes. Retry propagation, never turn a persistent error green.
-const origin='https://sorico.alfonso-millan.workers.dev';
+const origin='https://soriko.alfonso-millan.workers.dev';
 const expected=process.env.GITHUB_SHA;
 if(!expected||!/^[0-9a-f]{40}$/.test(expected))throw new Error('Expected commit required');
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
