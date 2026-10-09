@@ -220,19 +220,38 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
      {products.length===0&&<p className="en-muted">Aún no hay productos en Commerce. No se han importado artículos de prueba del antiguo Engine.</p>}
     </section>
     {writer&&editing&&<section className="en-panel"><h2>Editar referencia</h2><form className="commerce-form" onSubmit={e=>{e.preventDefault();void run(async()=>{
-     const cents=editPrice.trim()?Math.round(Number(editPrice)*100):null;
-     if(cents!==null&&(!Number.isInteger(cents)||cents<=0))throw Error('PVP incorrecto');
+     const cents=eurosToCents(editPrice);
+     const tax=editVat===''?null:Number(editVat);
+     const existing=products.find(p=>p.id===editing);
+     if(!existing)throw Error('La variante ya no existe. Actualiza el catálogo.');
+     if(editStatus==='active'){
+      const problems=publicationIssues({slug:editSlug,name:editName,
+       priceCents:cents,vatBasisPoints:tax,active:existing.active});
+      if(problems.length)throw Error(problems.join(' '));
+     }
      await call('update_listing',{variantId:editing,patch:{
-      price_cents:cents,vat_basis_points:editVat===''?null:Number(editVat),status:editStatus
+      name:editName,slug:editSlug,description:editDescription,
+      set_name:editSetName,image_url:editImageUrl,
+      price_cents:cents,vat_basis_points:tax,status:editStatus
      }});
-     setEditing(null);await refresh();setNotice('Cambios guardados en Commerce.');
+     setEditing(null);await refresh();
+     setNotice(editStatus==='active'?'Ficha visible en Soriko Store. Sin unidades disponibles no permite compras.':'Ficha guardada y oculta de Soriko Store.');
     });}}>
+     <label className="commerce-form-wide">Nombre<input required minLength={3} maxLength={180} value={editName} onChange={e=>setEditName(e.target.value)}/></label>
+     <label className="commerce-form-wide">URL / slug del producto<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={120} value={editSlug} onChange={e=>setEditSlug(e.target.value)}/><small>Comprueba que el slug corresponde a este producto, no a otra colección.</small></label>
+     <label className="commerce-form-wide">URL de imagen HTTPS<input type="url" value={editImageUrl} onChange={e=>setEditImageUrl(e.target.value)} placeholder="https://..."/></label>
+     <label className="commerce-form-wide">Colección / set<input value={editSetName} onChange={e=>setEditSetName(e.target.value)} maxLength={120}/></label>
+     <label className="commerce-form-wide">Descripción<textarea value={editDescription} onChange={e=>setEditDescription(e.target.value)} rows={3} maxLength={5000}/></label>
      <label>PVP EUR<input type="number" step="0.01" min="0.01" value={editPrice} onChange={e=>setEditPrice(e.target.value)}/></label>
      <label>IVA<select value={editVat} onChange={e=>setEditVat(e.target.value)}><option value="">Sin configurar</option>
       <option value="2100">21 %</option><option value="1000">10 %</option><option value="400">4 %</option><option value="0">0 %</option></select></label>
      <label>Publicación<select value={editStatus} onChange={e=>setEditStatus(e.target.value)}>
-      <option value="draft">Borrador</option><option value="active">Publicado</option><option value="archived">Archivado</option></select></label>
-     <div className="commerce-form-wide"><button disabled={busy}>Guardar cambios</button> <button type="button" className="en-ghost" onClick={()=>setEditing(null)}>Cancelar</button></div>
+      <option value="draft">Borrador (oculto)</option><option value="active">Publicado (visible en tienda)</option><option value="archived">Archivado (oculto)</option></select></label>
+     <div className="commerce-form-wide">
+      <p className="en-muted">Publicar significa mostrar la ficha en la web. Las unidades disponibles siguen dependiendo únicamente del inventario real.</p>
+      <button disabled={busy}>Guardar y {editStatus==='active'?'publicar':'dejar oculto'}</button>
+      {' '}<button type="button" className="en-ghost" onClick={()=>setEditing(null)}>Cancelar</button>
+     </div>
     </form></section>}
    </>}
    {data&&view==='inventory'&&<>
