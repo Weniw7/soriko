@@ -29,7 +29,12 @@ async function db<T=Row[]>(path:string,method:'GET'|'POST'='GET',body?:unknown):
   const code=typeof error.code==='string'?error.code:'DATABASE_ERROR';
   if(code==='23505') throw new HttpError(409,'DUPLICATE_REFERENCE');
   if(code==='23514'||code==='22P02') throw new HttpError(400,'INVALID_INPUT');
-  if(code==='P0001') throw new HttpError(409,'OPERATION_REJECTED');
+  if(code==='P0001'){
+   const known=['PUBLISH_REQUIRES_PRICE_AND_VAT','INVALID_PUBLICATION_STATUS',
+    'INVALID_LISTING','INVALID_LISTING_FIELD','INVALID_LISTING_UPDATE'];
+   if(known.includes(error.message))throw new HttpError(422,error.message);
+   throw new HttpError(409,'OPERATION_REJECTED');
+  }
   throw new HttpError(500,'DATABASE_REQUEST_FAILED');
  }
  return response.json() as Promise<T>;
@@ -178,6 +183,10 @@ Deno.serve(async(request:Request)=>{
    const payload=body.payload as Record<string,unknown>;
    const price=payload.price_cents;
    const vat=payload.vat_basis_points;
+   if(payload.status!==undefined&&!['draft','active'].includes(String(payload.status)))
+    throw new HttpError(400,'INVALID_PUBLICATION_STATUS');
+   if(payload.status==='active'&&(price==null||vat==null))
+    throw new HttpError(422,'PUBLISH_REQUIRES_PRICE_AND_VAT');
    if(price!=null&&(!Number.isInteger(price)||Number(price)<=0))
     throw new HttpError(400,'INVALID_PRICE');
    if(vat!=null&&(!Number.isInteger(vat)||Number(vat)<0||Number(vat)>10000))
@@ -190,8 +199,26 @@ Deno.serve(async(request:Request)=>{
    if(!isUuid(body.variantId)||!body.patch||typeof body.patch!=='object'||Array.isArray(body.patch))
     throw new HttpError(400,'INVALID_LISTING');
    const patch=body.patch as Record<string,unknown>;
-   const allowed=new Set(['status','name','image_url','price_cents','vat_basis_points','active']);
+   const allowed=new Set([
+    'status','name','slug','description','set_name','image_url',
+    'price_cents','vat_basis_points','active'
+   ]);
    if(Object.keys(patch).some(k=>!allowed.has(k)))throw new HttpError(400,'INVALID_LISTING_FIELDS');
+   if(patch.status!==undefined&&!['draft','active','archived'].includes(String(patch.status)))
+    throw new HttpError(400,'INVALID_PUBLICATION_STATUS');
+   if(patch.slug!==undefined && (typeof patch.slug!=='string' ||
+     !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(patch.slug) || patch.slug.length>120))
+    throw new HttpError(400,'INVALID_SLUG');
+   if(patch.name!==undefined && (typeof patch.name!=='string' ||
+     patch.name.trim().length<3 || patch.name.length>180))
+    throw new HttpError(400,'INVALID_NAME');
+   if(patch.description!==undefined && (typeof patch.description!=='string' || patch.description.length>5000))
+    throw new HttpError(400,'INVALID_DESCRIPTION');
+   if(patch.set_name!==undefined && patch.set_name!==null && (typeof patch.set_name!=='string'||patch.set_name.length>120))
+    throw new HttpError(400,'INVALID_SET_NAME');
+   if(patch.image_url!==undefined && patch.image_url!==null && patch.image_url!=='' &&
+     (typeof patch.image_url!=='string'||!patch.image_url.startsWith('https://')||patch.image_url.length>2048))
+    throw new HttpError(400,'INVALID_IMAGE_URL');
    if(patch.price_cents!=null&&(!Number.isInteger(patch.price_cents)||Number(patch.price_cents)<=0))
     throw new HttpError(400,'INVALID_PRICE');
    if(patch.vat_basis_points!=null&&(!Number.isInteger(patch.vat_basis_points)||Number(patch.vat_basis_points)<0||Number(patch.vat_basis_points)>10000))
