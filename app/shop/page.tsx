@@ -29,7 +29,7 @@ export default function ShopPage() {
 
       <section className="shopPromise">
         <div className="pageWidth shopPromiseGrid">
-          <article><span>01</span><h3>Autenticidad primero.</h3><p>Origen, idioma y condición claros. El catálogo definitivo solo mostrará producto con disponibilidad confirmada.</p></article>
+          <article><span>01</span><h3>Autenticidad primero.</h3><p>Origen, idioma y condición claros. Disponibilidad real en cada ficha: si una caja no tiene existencias, aparecerá agotada y sin opción de compra.</p></article>
           <article><span>02</span><h3>Japón, pero fácil.</h3><p>Soriko absorbe la complejidad de proxies, importación y selección para que el cliente compre desde Europa.</p></article>
           <article><span>03</span><h3>El sellado es producto.</h3><p>Precinto, golpes, almacenamiento y presentación importan tanto como la caja que hay dentro.</p></article>
           <article><span>04</span><h3>No vendemos y desaparecemos.</h3><p>Wishlist, alertas, Journal y Club mantienen viva la relación con el coleccionista después del checkout.</p></article>
