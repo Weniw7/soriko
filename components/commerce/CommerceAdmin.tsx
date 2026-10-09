@@ -194,10 +194,29 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
      </form>
     </section>}
     <section className="en-panel"><h2>Catálogo registrado ({products.length})</h2>
+     <p className="commerce-publication-summary"><strong>{published} publicados</strong> · {drafts} borradores ocultos. Solo las fichas publicadas aparecen en la tienda, incluso sin unidades disponibles.</p>
      <div className="en-table-wrap"><table><thead><tr><th>Producto / SKU</th><th>Idioma</th><th>PVP</th><th>Estado</th><th>Disponible</th>{writer&&<th>Acciones</th>}</tr></thead>
      <tbody>{products.map(p=><tr key={p.id}><td><strong>{p.name}</strong><small className="commerce-subtext">{p.sku}</small></td>
-      <td>{p.language}</td><td>{format(p.priceCents)}</td><td>{p.status}</td><td>{p.stock}</td>
-      {writer&&<td><button className="en-ghost" type="button" onClick={()=>{setEditing(p.id);setEditPrice(p.priceCents===null?'':String(p.priceCents/100));setEditVat(p.vatBasisPoints===null?'':String(p.vatBasisPoints));setEditStatus(p.status);}}>Editar</button></td>}</tr>)}</tbody></table></div>
+      <td>{p.language}</td><td>{format(p.priceCents)}</td><td><span className={p.status==='active'?'commerce-visible':'commerce-hidden'}>
+      {p.status==='active'?(p.stock>0?'Publicado · Vendible':'Publicado · Agotado'):p.status==='draft'?'Borrador · OCULTO':'Archivado · OCULTO'}</span></td><td>{p.stock}</td>
+      {writer&&<td><div className="commerce-row-actions">
+       <button className="en-ghost" type="button" onClick={()=>{
+        setEditing(p.id);setEditName(p.name);setEditSlug(p.slug);
+        setEditDescription(p.description);setEditSetName(p.setName||'');setEditImageUrl(p.imageUrl||'');
+        setEditPrice(p.priceCents===null?'':String(p.priceCents/100));
+        setEditVat(p.vatBasisPoints===null?'':String(p.vatBasisPoints));setEditStatus(p.status);
+       }}>Editar</button>
+       {p.status==='draft'&&<button type="button" disabled={busy||publicationIssues({
+        slug:p.slug,name:p.name,priceCents:p.priceCents,vatBasisPoints:p.vatBasisPoints,active:p.active
+       }).length>0} title="Publicar la ficha (aunque no haya stock)" onClick={()=>void run(async()=>{
+        await call('update_listing',{variantId:p.id,patch:{status:'active'}});
+        await refresh();setNotice('Producto publicado en la tienda. Sin stock no se podrá comprar.');
+       })}>Publicar</button>}
+       {p.status==='active'&&<button className="en-ghost" type="button" disabled={busy} onClick={()=>void run(async()=>{
+        await call('update_listing',{variantId:p.id,patch:{status:'draft'}});
+        await refresh();setNotice('Producto ocultado de la tienda; los datos y el stock se conservan.');
+       })}>Ocultar</button>}
+      </div></td>}</tr>)}</tbody></table></div>
      {products.length===0&&<p className="en-muted">Aún no hay productos en Commerce. No se han importado artículos de prueba del antiguo Engine.</p>}
     </section>
     {writer&&editing&&<section className="en-panel"><h2>Editar referencia</h2><form className="commerce-form" onSubmit={e=>{e.preventDefault();void run(async()=>{
