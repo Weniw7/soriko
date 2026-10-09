@@ -4,6 +4,8 @@ import Link from 'next/link';
 import {createClient} from '@supabase/supabase-js';
 import type {Session} from '@supabase/supabase-js';
 import SoraSourcing from './SoraSourcing';
+import {eurosToCents} from '../../lib/commerce/core';
+import {productSlug,publicationIssues} from '../../lib/commerce/catalog';
 
 const BASE=process.env.NEXT_PUBLIC_SUPABASE_URL||'https://vgxeebazmzkncbsmcrha.supabase.co';
 const KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'sb_publishable_SSDkG-X9oWgoD4qHR_bwaA_0vOG5OEv';
@@ -43,6 +45,8 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
  const [data,setData]=useState<Dashboard|null>(null);
  const [name,setName]=useState('');
  const [slug,setSlug]=useState('');
+ const [slugEdited,setSlugEdited]=useState(false);
+ const [publishNow,setPublishNow]=useState(false);
  const [sku,setSku]=useState('');
  const [language,setLanguage]=useState('JP');
  const [category,setCategory]=useState('BOOSTER_BOX');
@@ -56,6 +60,11 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
  const [editPrice,setEditPrice]=useState('');
  const [editVat,setEditVat]=useState('');
  const [editStatus,setEditStatus]=useState('draft');
+ const [editName,setEditName]=useState('');
+ const [editSlug,setEditSlug]=useState('');
+ const [editDescription,setEditDescription]=useState('');
+ const [editSetName,setEditSetName]=useState('');
+ const [editImageUrl,setEditImageUrl]=useState('');
  useEffect(()=>{
   let alive=true;
   client.auth.getSession().then(({data})=>{if(alive){setSession(data.session);setReady(true);}})
@@ -87,6 +96,8 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
  const products=data?.products??[];
  const writer=data?.staff.role==='admin'||data?.staff.role==='manager';
  const canStock=writer||data?.staff.role==='operator';
+ const drafts=products.filter(p=>p.status==='draft').length;
+ const published=products.filter(p=>p.status==='active').length;
  const metrics=useMemo(()=>{
   const available=products.reduce((sum,p)=>sum+p.stock,0);
   const units=products.reduce((sum,p)=>sum+p.onHand,0);
@@ -156,18 +167,19 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
     {writer&&<section className="en-panel commerce-panel">
      <div className="en-panel-head"><div><p className="en-eyebrow">CREAR REFERENCIA</p><h2>Nuevo producto y SKU</h2></div></div>
      <form className="commerce-form" onSubmit={e=>{e.preventDefault();void run(async()=>{
-      const euros=price.trim()?Math.round(Number(price)*100):null;
+      const euros=eurosToCents(price);
       if(euros!==null&&(!Number.isInteger(euros)||euros<=0))throw Error('Indica un precio válido en euros.');
       const payload={
        name,slug,sku,language,category,image_url:imageUrl,
-       price_cents:euros,vat_basis_points:vat===''?null:Number(vat)
+       price_cents:euros,vat_basis_points:vat===''?null:Number(vat),
+       status:publishNow?'active':'draft'
       };
       await call('create_listing',{payload});
-      setName('');setSlug('');setSku('');setPrice('');setImageUrl('');setVat('');
-      await refresh();setNotice('Producto creado como borrador. Registra stock y publícalo cuando esté validado.');
+      setName('');setSlug('');setSlugEdited(false);setSku('');setPrice('');setImageUrl('');setVat('');setPublishNow(false);
+      await refresh();setNotice(publishNow?'Producto publicado y visible en la tienda. Con stock cero no se puede comprar.':'Producto guardado como borrador. No aparece en la tienda hasta que lo publiques.');
      });}}>
-      <label>Nombre<input required minLength={3} maxLength={180} value={name} onChange={e=>{setName(e.target.value);if(!slug)setSlug(e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''));}}/></label>
-      <label>Slug único<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={slug} onChange={e=>setSlug(e.target.value)} placeholder="pokemon-151-jp"/></label>
+      <label>Nombre<input required minLength={3} maxLength={180} value={name} onChange={e=>{setName(e.target.value);if(!slugEdited)setSlug(productSlug(e.target.value));}}/></label>
+      <label>Slug único<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={slug} onChange={e=>{setSlugEdited(true);setSlug(e.target.value);}} placeholder="pokemon-151-jp"/></label>
       <label>SKU único<input required minLength={3} value={sku} onChange={e=>setSku(e.target.value)} placeholder="PK-151-JP-BOX"/></label>
       <label>Idioma<select value={language} onChange={e=>setLanguage(e.target.value)}><option value="JP">Japonés</option><option value="EN">Inglés</option><option value="ES">Español</option></select></label>
       <label>Formato<select value={category} onChange={e=>setCategory(e.target.value)}>{CATEGORY.map(([id,label])=><option value={id} key={id}>{label}</option>)}</select></label>
@@ -176,30 +188,70 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
        <option value="">Sin configurar</option><option value="2100">21 %</option><option value="1000">10 %</option><option value="400">4 %</option><option value="0">0 % (solo si procede)</option>
       </select></label>
       <label className="commerce-form-wide">URL imagen autorizada (HTTPS)<input type="url" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} placeholder="https://..."/></label>
-      <div className="commerce-form-wide"><button disabled={busy}>Crear producto en borrador</button></div>
+      <label className="commerce-form-wide commerce-publish-choice"><input type="checkbox" checked={publishNow} onChange={e=>setPublishNow(e.target.checked)}/>
+       <span><strong>Publicar también en Soriko Store</strong><small>La ficha será visible inmediatamente. Si no hay stock, se mostrará «Agotado» y no permitirá añadir al carrito. Sin marcar, se guardará oculta como borrador.</small></span></label>
+      <div className="commerce-form-wide"><button disabled={busy}>{publishNow?'Crear y publicar en tienda':'Guardar borrador (oculto)'}</button></div>
      </form>
     </section>}
     <section className="en-panel"><h2>Catálogo registrado ({products.length})</h2>
+     <p className="commerce-publication-summary"><strong>{published} publicados</strong> · {drafts} borradores ocultos. Solo las fichas publicadas aparecen en la tienda, incluso sin unidades disponibles.</p>
      <div className="en-table-wrap"><table><thead><tr><th>Producto / SKU</th><th>Idioma</th><th>PVP</th><th>Estado</th><th>Disponible</th>{writer&&<th>Acciones</th>}</tr></thead>
      <tbody>{products.map(p=><tr key={p.id}><td><strong>{p.name}</strong><small className="commerce-subtext">{p.sku}</small></td>
-      <td>{p.language}</td><td>{format(p.priceCents)}</td><td>{p.status}</td><td>{p.stock}</td>
-      {writer&&<td><button className="en-ghost" type="button" onClick={()=>{setEditing(p.id);setEditPrice(p.priceCents===null?'':String(p.priceCents/100));setEditVat(p.vatBasisPoints===null?'':String(p.vatBasisPoints));setEditStatus(p.status);}}>Editar</button></td>}</tr>)}</tbody></table></div>
+      <td>{p.language}</td><td>{format(p.priceCents)}</td><td><span className={p.status==='active'?'commerce-visible':'commerce-hidden'}>
+      {p.status==='active'?(p.stock>0?'Publicado · Vendible':'Publicado · Agotado'):p.status==='draft'?'Borrador · OCULTO':'Archivado · OCULTO'}</span></td><td>{p.stock}</td>
+      {writer&&<td><div className="commerce-row-actions">
+       <button className="en-ghost" type="button" onClick={()=>{
+        setEditing(p.id);setEditName(p.name);setEditSlug(p.slug);
+        setEditDescription(p.description);setEditSetName(p.setName||'');setEditImageUrl(p.imageUrl||'');
+        setEditPrice(p.priceCents===null?'':String(p.priceCents/100));
+        setEditVat(p.vatBasisPoints===null?'':String(p.vatBasisPoints));setEditStatus(p.status);
+       }}>Editar</button>
+       {p.status==='draft'&&<button type="button" disabled={busy||publicationIssues({
+        slug:p.slug,name:p.name,priceCents:p.priceCents,vatBasisPoints:p.vatBasisPoints,active:p.active
+       }).length>0} title="Publicar la ficha (aunque no haya stock)" onClick={()=>void run(async()=>{
+        await call('update_listing',{variantId:p.id,patch:{status:'active'}});
+        await refresh();setNotice('Producto publicado en la tienda. Sin stock no se podrá comprar.');
+       })}>Publicar</button>}
+       {p.status==='active'&&<button className="en-ghost" type="button" disabled={busy} onClick={()=>void run(async()=>{
+        await call('update_listing',{variantId:p.id,patch:{status:'draft'}});
+        await refresh();setNotice('Producto ocultado de la tienda; los datos y el stock se conservan.');
+       })}>Ocultar</button>}
+      </div></td>}</tr>)}</tbody></table></div>
      {products.length===0&&<p className="en-muted">Aún no hay productos en Commerce. No se han importado artículos de prueba del antiguo Engine.</p>}
     </section>
     {writer&&editing&&<section className="en-panel"><h2>Editar referencia</h2><form className="commerce-form" onSubmit={e=>{e.preventDefault();void run(async()=>{
-     const cents=editPrice.trim()?Math.round(Number(editPrice)*100):null;
-     if(cents!==null&&(!Number.isInteger(cents)||cents<=0))throw Error('PVP incorrecto');
+     const cents=eurosToCents(editPrice);
+     const tax=editVat===''?null:Number(editVat);
+     const existing=products.find(p=>p.id===editing);
+     if(!existing)throw Error('La variante ya no existe. Actualiza el catálogo.');
+     if(editStatus==='active'){
+      const problems=publicationIssues({slug:editSlug,name:editName,
+       priceCents:cents,vatBasisPoints:tax,active:existing.active});
+      if(problems.length)throw Error(problems.join(' '));
+     }
      await call('update_listing',{variantId:editing,patch:{
-      price_cents:cents,vat_basis_points:editVat===''?null:Number(editVat),status:editStatus
+      name:editName,slug:editSlug,description:editDescription,
+      set_name:editSetName,image_url:editImageUrl,
+      price_cents:cents,vat_basis_points:tax,status:editStatus
      }});
-     setEditing(null);await refresh();setNotice('Cambios guardados en Commerce.');
+     setEditing(null);await refresh();
+     setNotice(editStatus==='active'?'Ficha visible en Soriko Store. Sin unidades disponibles no permite compras.':'Ficha guardada y oculta de Soriko Store.');
     });}}>
+     <label className="commerce-form-wide">Nombre<input required minLength={3} maxLength={180} value={editName} onChange={e=>setEditName(e.target.value)}/></label>
+     <label className="commerce-form-wide">URL / slug del producto<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={120} value={editSlug} onChange={e=>setEditSlug(e.target.value)}/><small>Comprueba que el slug corresponde a este producto, no a otra colección.</small></label>
+     <label className="commerce-form-wide">URL de imagen HTTPS<input type="url" value={editImageUrl} onChange={e=>setEditImageUrl(e.target.value)} placeholder="https://..."/></label>
+     <label className="commerce-form-wide">Colección / set<input value={editSetName} onChange={e=>setEditSetName(e.target.value)} maxLength={120}/></label>
+     <label className="commerce-form-wide">Descripción<textarea value={editDescription} onChange={e=>setEditDescription(e.target.value)} rows={3} maxLength={5000}/></label>
      <label>PVP EUR<input type="number" step="0.01" min="0.01" value={editPrice} onChange={e=>setEditPrice(e.target.value)}/></label>
      <label>IVA<select value={editVat} onChange={e=>setEditVat(e.target.value)}><option value="">Sin configurar</option>
       <option value="2100">21 %</option><option value="1000">10 %</option><option value="400">4 %</option><option value="0">0 %</option></select></label>
      <label>Publicación<select value={editStatus} onChange={e=>setEditStatus(e.target.value)}>
-      <option value="draft">Borrador</option><option value="active">Publicado</option><option value="archived">Archivado</option></select></label>
-     <div className="commerce-form-wide"><button disabled={busy}>Guardar cambios</button> <button type="button" className="en-ghost" onClick={()=>setEditing(null)}>Cancelar</button></div>
+      <option value="draft">Borrador (oculto)</option><option value="active">Publicado (visible en tienda)</option><option value="archived">Archivado (oculto)</option></select></label>
+     <div className="commerce-form-wide">
+      <p className="en-muted">Publicar significa mostrar la ficha en la web. Las unidades disponibles siguen dependiendo únicamente del inventario real.</p>
+      <button disabled={busy}>Guardar y {editStatus==='active'?'publicar':'dejar oculto'}</button>
+      {' '}<button type="button" className="en-ghost" onClick={()=>setEditing(null)}>Cancelar</button>
+     </div>
     </form></section>}
    </>}
    {data&&view==='inventory'&&<>
