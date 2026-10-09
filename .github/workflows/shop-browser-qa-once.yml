@@ -50,14 +50,18 @@ jobs:
             assert.equal(await card.getByRole('button',{name:'Añadir +'}).isDisabled(),true);
             assert.ok(api.some(x=>x.code===200),JSON.stringify(api));
             assert.deepEqual(runtimeErrors,[]);
+            await card.scrollIntoViewIfNeeded();
+            await page.waitForTimeout(2400);
             const image=card.locator('img');
             const imageOk=await image.count()?
               await image.first().evaluate(e=>e.complete && e.naturalWidth>0):false;
+            const placeholder=await card.locator('.packShape').isVisible();
+            assert.ok(imageOk||placeholder,'Product photo or fallback must be visible');
             const out='/tmp/soriko-shop-'+name+'.png';
-            await page.screenshot({path:out,fullPage:false});
+            await card.screenshot({path:out});
             const preview=await sharp(out).resize({width:800,withoutEnlargement:true})
               .jpeg({quality:40}).toBuffer();
-            console.log('BROWSER_PASS '+name+' product=TK-0164 status=200 stock=0 add_disabled=true image_loaded='+imageOk);
+            console.log('BROWSER_PASS '+name+' product=TK-0164 status=200 stock=0 add_disabled=true image_loaded='+imageOk+' branded_fallback='+placeholder);
             const b64=preview.toString('base64');
             console.log('SHOT_BEGIN '+name+' '+preview.length);
             for(let i=0;i<b64.length;i+=4000)console.log('SHOT_CHUNK '+b64.slice(i,i+4000));
