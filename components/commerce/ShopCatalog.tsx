@@ -32,15 +32,40 @@ export default function ShopCatalog(){
  const [cart,setCart]=useState<Cart[]>([]);
  const [hydrated,setHydrated]=useState(false);
  const [cartOpen,setCartOpen]=useState(false);
+ const [reload,setReload]=useState(0);
+ const [brokenImages,setBrokenImages]=useState<string[]>([]);
  useEffect(()=>{
   let active=true;
-  fetch(API+'?action=catalog',{cache:'no-store',headers:{apikey:KEY}})
-   .then(async r=>{if(!r.ok)throw new Error('CATALOG_UNAVAILABLE');return r.json() as Promise<{products:Product[]}>;})
-   .then(data=>{if(active)setItems(Array.isArray(data.products)?data.products:[]);})
-   .catch(()=>{if(active)setError('El catálogo no está disponible en este momento. Inténtalo más tarde.');})
-   .finally(()=>{if(active)setLoading(false);});
-  return()=>{active=false;};
- },[]);
+  let latestRequest=0;
+  async function load(){
+   const request=++latestRequest;
+   setLoading(true);
+   try{
+    const response=await fetch(API+'?action=catalog',{cache:'no-store',headers:{apikey:KEY}});
+    if(!response.ok)throw new Error('CATALOG_UNAVAILABLE');
+    const data=await response.json() as {products:Product[]};
+    if(active&&request===latestRequest){
+     setItems(Array.isArray(data.products)?data.products:[]);
+     setError('');
+    }
+   }catch{
+    if(active&&request===latestRequest)
+     setError('No hemos podido actualizar el catálogo. Comprueba tu conexión y vuelve a intentarlo.');
+   }finally{
+    if(active&&request===latestRequest)setLoading(false);
+   }
+  }
+  const reloadWhenVisible=()=>{if(document.visibilityState==='visible')void load();};
+  const reloadOnFocus=()=>{void load();};
+  void load();
+  window.addEventListener('focus',reloadOnFocus);
+  document.addEventListener('visibilitychange',reloadWhenVisible);
+  return()=>{
+   active=false;
+   window.removeEventListener('focus',reloadOnFocus);
+   document.removeEventListener('visibilitychange',reloadWhenVisible);
+  };
+ },[reload]);
  useEffect(()=>{
   try{
    const saved=JSON.parse(localStorage.getItem(CART_KEY)||'[]');
@@ -87,7 +112,8 @@ export default function ShopCatalog(){
   <section className="catalogSection pageWidth" id="anniversary">
    <div className="catalogHeading pokemonCatalogHeading">
     <div><p className="kicker">SORIKO STORE / CATÁLOGO REAL</p><h2>La colección empieza con lo que tenemos.</h2></div>
-    <span>{loading?'Consultando inventario…':items.length?items.length+' referencias de inventario':'Primer drop en preparación'}</span>
+    <div className="commerce-catalog-tools"><span>{loading?'Consultando inventario…':items.length?items.length+' productos publicados':'Primer drop en preparación'}</span>
+     <button type="button" onClick={()=>setReload(n=>n+1)} disabled={loading}>Actualizar catálogo</button></div>
    </div>
    <div className="commerce-toolbar">
     <label className="commerce-search"><span>Buscar cartas y cajas</span>
@@ -111,7 +137,8 @@ export default function ShopCatalog(){
     {results.map(product=><article className="pokemonProductCard" key={product.id}>
      <div className="pokemonProductVisual commerce-product-visual">
       <span className="productBadge">{LANG[product.language]} · {CATEGORY[product.category]||'Pokémon TCG'}</span>
-      {product.imageUrl?<img src={product.imageUrl} alt={product.name+' '+product.language} loading="lazy"/>:
+      {product.imageUrl&&!brokenImages.includes(product.id)?<img src={product.imageUrl} alt={product.name+' '+product.language} loading="lazy"
+       onError={()=>setBrokenImages(current=>current.includes(product.id)?current:[...current,product.id])}/>:
        <div className="packShape"><span>SORIKO</span><strong>{product.name}</strong><small>POKÉMON TCG · {product.language}</small></div>}
      </div>
      <div className="pokemonProductInfo">
