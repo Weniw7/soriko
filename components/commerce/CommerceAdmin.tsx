@@ -194,7 +194,7 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
      </form>
     </section>}
     <section className="en-panel"><h2>Catálogo registrado ({products.length})</h2>
-     <p className="commerce-publication-summary"><strong>{published} publicados</strong> · {drafts} borradores ocultos. Solo las fichas publicadas aparecen en la tienda, incluso sin unidades disponibles.</p>
+     <p className="commerce-publication-summary"><strong>{published} publicados</strong> · {drafts} borradores ocultos. Solo las fichas publicadas aparecen en la tienda, incluso sin unidades disponibles. Los análisis en <Link href="/admin/sourcing/">Sora / Mercado</Link> no se importan automáticamente: no son stock comercial.</p>
      <div className="en-table-wrap"><table><thead><tr><th>Producto / SKU</th><th>Idioma</th><th>PVP</th><th>Estado</th><th>Disponible</th>{writer&&<th>Acciones</th>}</tr></thead>
      <tbody>{products.map(p=><tr key={p.id}><td><strong>{p.name}</strong><small className="commerce-subtext">{p.sku}</small></td>
       <td>{p.language}</td><td>{format(p.priceCents)}</td><td><span className={p.status==='active'?'commerce-visible':'commerce-hidden'}>
