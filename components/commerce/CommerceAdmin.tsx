@@ -4,6 +4,8 @@ import Link from 'next/link';
 import {createClient} from '@supabase/supabase-js';
 import type {Session} from '@supabase/supabase-js';
 import SoraSourcing from './SoraSourcing';
+import {eurosToCents} from '../../lib/commerce/core';
+import {productSlug,publicationIssues} from '../../lib/commerce/catalog';
 
 const BASE=process.env.NEXT_PUBLIC_SUPABASE_URL||'https://vgxeebazmzkncbsmcrha.supabase.co';
 const KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'sb_publishable_SSDkG-X9oWgoD4qHR_bwaA_0vOG5OEv';
@@ -43,6 +45,8 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
  const [data,setData]=useState<Dashboard|null>(null);
  const [name,setName]=useState('');
  const [slug,setSlug]=useState('');
+ const [slugEdited,setSlugEdited]=useState(false);
+ const [publishNow,setPublishNow]=useState(false);
  const [sku,setSku]=useState('');
  const [language,setLanguage]=useState('JP');
  const [category,setCategory]=useState('BOOSTER_BOX');
@@ -56,6 +60,11 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
  const [editPrice,setEditPrice]=useState('');
  const [editVat,setEditVat]=useState('');
  const [editStatus,setEditStatus]=useState('draft');
+ const [editName,setEditName]=useState('');
+ const [editSlug,setEditSlug]=useState('');
+ const [editDescription,setEditDescription]=useState('');
+ const [editSetName,setEditSetName]=useState('');
+ const [editImageUrl,setEditImageUrl]=useState('');
  useEffect(()=>{
   let alive=true;
   client.auth.getSession().then(({data})=>{if(alive){setSession(data.session);setReady(true);}})
@@ -87,6 +96,8 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
  const products=data?.products??[];
  const writer=data?.staff.role==='admin'||data?.staff.role==='manager';
  const canStock=writer||data?.staff.role==='operator';
+ const drafts=products.filter(p=>p.status==='draft').length;
+ const published=products.filter(p=>p.status==='active').length;
  const metrics=useMemo(()=>{
   const available=products.reduce((sum,p)=>sum+p.stock,0);
   const units=products.reduce((sum,p)=>sum+p.onHand,0);
