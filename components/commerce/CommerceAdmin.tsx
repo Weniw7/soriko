@@ -167,18 +167,19 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
     {writer&&<section className="en-panel commerce-panel">
      <div className="en-panel-head"><div><p className="en-eyebrow">CREAR REFERENCIA</p><h2>Nuevo producto y SKU</h2></div></div>
      <form className="commerce-form" onSubmit={e=>{e.preventDefault();void run(async()=>{
-      const euros=price.trim()?Math.round(Number(price)*100):null;
+      const euros=eurosToCents(price);
       if(euros!==null&&(!Number.isInteger(euros)||euros<=0))throw Error('Indica un precio válido en euros.');
       const payload={
        name,slug,sku,language,category,image_url:imageUrl,
-       price_cents:euros,vat_basis_points:vat===''?null:Number(vat)
+       price_cents:euros,vat_basis_points:vat===''?null:Number(vat),
+       status:publishNow?'active':'draft'
       };
       await call('create_listing',{payload});
-      setName('');setSlug('');setSku('');setPrice('');setImageUrl('');setVat('');
-      await refresh();setNotice('Producto creado como borrador. Registra stock y publícalo cuando esté validado.');
+      setName('');setSlug('');setSlugEdited(false);setSku('');setPrice('');setImageUrl('');setVat('');setPublishNow(false);
+      await refresh();setNotice(publishNow?'Producto publicado y visible en la tienda. Con stock cero no se puede comprar.':'Producto guardado como borrador. No aparece en la tienda hasta que lo publiques.');
      });}}>
-      <label>Nombre<input required minLength={3} maxLength={180} value={name} onChange={e=>{setName(e.target.value);if(!slug)setSlug(e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''));}}/></label>
-      <label>Slug único<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={slug} onChange={e=>setSlug(e.target.value)} placeholder="pokemon-151-jp"/></label>
+      <label>Nombre<input required minLength={3} maxLength={180} value={name} onChange={e=>{setName(e.target.value);if(!slugEdited)setSlug(productSlug(e.target.value));}}/></label>
+      <label>Slug único<input required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={slug} onChange={e=>{setSlugEdited(true);setSlug(e.target.value);}} placeholder="pokemon-151-jp"/></label>
       <label>SKU único<input required minLength={3} value={sku} onChange={e=>setSku(e.target.value)} placeholder="PK-151-JP-BOX"/></label>
       <label>Idioma<select value={language} onChange={e=>setLanguage(e.target.value)}><option value="JP">Japonés</option><option value="EN">Inglés</option><option value="ES">Español</option></select></label>
       <label>Formato<select value={category} onChange={e=>setCategory(e.target.value)}>{CATEGORY.map(([id,label])=><option value={id} key={id}>{label}</option>)}</select></label>
@@ -187,7 +188,9 @@ export default function CommerceAdmin({view='overview'}:{view?:View}){
        <option value="">Sin configurar</option><option value="2100">21 %</option><option value="1000">10 %</option><option value="400">4 %</option><option value="0">0 % (solo si procede)</option>
       </select></label>
       <label className="commerce-form-wide">URL imagen autorizada (HTTPS)<input type="url" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} placeholder="https://..."/></label>
-      <div className="commerce-form-wide"><button disabled={busy}>Crear producto en borrador</button></div>
+      <label className="commerce-form-wide commerce-publish-choice"><input type="checkbox" checked={publishNow} onChange={e=>setPublishNow(e.target.checked)}/>
+       <span><strong>Publicar también en Soriko Store</strong><small>La ficha será visible inmediatamente. Si no hay stock, se mostrará «Agotado» y no permitirá añadir al carrito. Sin marcar, se guardará oculta como borrador.</small></span></label>
+      <div className="commerce-form-wide"><button disabled={busy}>{publishNow?'Crear y publicar en tienda':'Guardar borrador (oculto)'}</button></div>
      </form>
     </section>}
     <section className="en-panel"><h2>Catálogo registrado ({products.length})</h2>
